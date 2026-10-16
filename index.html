@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#090d16" />
+    <meta name="description" content="Ready Mall Accra - Pizza Ready meets Accra Mall. The 3D browser shopping arcade game with real stores, real products, and Ghana MoMo checkout." />
+    <title>Ready Mall Accra | 3D Browser Shopping Arcade</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- 3D Three.js WebGL Canvas -->
+      <div id="game-canvas-container"></div>
+
+      <!-- DOM HUD & Interactive UI Layer -->
+      <div class="ui-layer">
+        <!-- Top Navigation HUD -->
+        <header class="top-hud">
+          <div class="brand-badge">
+            <div class="brand-icon">🏬</div>
+            <div>
+              <div class="brand-title">READY <span>MALL</span> <span class="brand-city">ACCRA</span></div>
+            </div>
+          </div>
+
+          <!-- Room Fast-Travel Navigation -->
+          <nav class="room-nav" id="room-nav">
+            <button class="nav-pill active" data-room="lobby">🏛️ Lobby</button>
+            <button class="nav-pill" data-room="shoes">👟 Shoe District (4 Stalls)</button>
+            <button class="nav-pill" data-room="tech">📱 Tech Alley</button>
+            <button class="nav-pill" data-room="groceries">🛒 Market Bazaar</button>
+            <button class="nav-pill" data-room="food">🍔 Food Court</button>
+            <button class="nav-pill" data-room="checkout">💳 Cashier</button>
+          </nav>
+
+          <!-- Global Search Bar -->
+          <div class="hud-search-wrap">
+            <div class="hud-search-box" id="hud-search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="hud-search-input" class="hud-search-input" placeholder="Search stalls, products..." />
+            </div>
+            <div class="search-results-dropdown" id="search-results-dropdown" style="display:none;"></div>
+          </div>
+
+          <!-- Actions -->
+          <div class="hud-actions">
+            <button class="icon-btn" id="sound-btn" title="Toggle Sound">🔊</button>
+            <button class="icon-btn" id="wardrobe-btn" title="Character Wardrobe">👕</button>
+            <button class="icon-btn" id="orders-btn" title="My Orders">📦 <span id="orders-badge" class="orders-badge hidden">0</span></button>
+            <button class="merchant-toggle-btn" id="merchant-btn">🏬 Merchant Portal</button>
+            <button class="cart-pill-btn" id="cart-btn">
+              <span>🛒</span>
+              <span id="cart-counter" class="cart-badge">0</span>
+              <span id="cart-total-badge">GHS 0</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- PA Announcement Ticker -->
+        <div class="pa-ticker-bar" id="pa-ticker-bar">
+          <span class="pa-icon">📢</span>
+          <div class="pa-ticker-track" id="pa-ticker-track">
+            <span class="pa-ticker-text" id="pa-ticker-text">Welcome to Ready Mall Accra — The premier 3D shopping experience! &nbsp;&nbsp;&nbsp; Flash Sale: 15% off at Kwame's Kicks today only! &nbsp;&nbsp;&nbsp; MTN MoMo &amp; Telecel Cash accepted at all stalls. &nbsp;&nbsp;&nbsp; New arrivals at Abena Luxury this weekend! &nbsp;&nbsp;&nbsp; Chorkor Chop Bar: Ghana Jollof served hot! &nbsp;&nbsp;&nbsp;</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Proximity Banner (Pops up when standing near a shelf or counter) -->
+        <div id="proximity-banner" class="proximity-prompt-container hidden">
+          <div class="interaction-banner" id="interaction-action-btn">
+            <div class="prompt-key">E / TAP</div>
+            <div>
+              <div class="prompt-text" id="prompt-main-text">Inspect Product</div>
+              <div class="prompt-sub" id="prompt-sub-text">Tap to view details & add to stack</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="bottom-controls">
+          <!-- Mobile Touch Virtual Joystick -->
+          <div class="joystick-zone" id="joystick-zone">
+            <div class="joystick-knob" id="joystick-knob"></div>
+          </div>
+
+          <!-- Desktop Controls Tip -->
+          <div class="desktop-controls-hint">
+            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>Arrows</kbd> to Run • <kbd>E</kbd> to Pick Up • Carry stack to <b>Cashier</b>
+          </div>
+        </div>
+
+        <!-- Radar Minimap -->
+        <div class="minimap-container" id="minimap-container">
+          <canvas id="minimap-canvas" width="160" height="160"></canvas>
+          <div class="minimap-label">MALL MAP</div>
+          <button class="minimap-toggle" id="minimap-toggle" title="Toggle Minimap">🗺️</button>
+        </div>
+
+        <!-- Mall Radio Widget -->
+        <div class="radio-widget" id="radio-widget">
+          <div class="radio-station-badge" id="radio-station-badge">
+            <span class="radio-dot"></span>
+            <span id="radio-station-name">Accra Vibes FM</span>
+          </div>
+          <div class="radio-controls">
+            <button class="radio-btn" id="radio-prev-btn">⏮</button>
+            <button class="radio-btn radio-play" id="radio-play-btn">▶</button>
+            <button class="radio-btn" id="radio-next-btn">⏭</button>
+          </div>
+          <div class="radio-vol-row">
+            <span>🔈</span>
+            <input type="range" id="radio-vol" class="radio-vol-slider" min="0" max="1" step="0.05" value="0.4" />
+            <span>🔊</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 1: Product Quick-View Sheet -->
+      <div class="modal-overlay" id="product-modal">
+        <div class="modal-card">
+          <button class="modal-close" id="product-modal-close">&times;</button>
+          <img id="modal-prod-img" class="product-preview-img" src="" alt="Product" />
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div class="product-store-tag">
+              <span id="modal-store-icon">👟</span>
+              <span id="modal-store-name">Kwame's Kicks</span>
+            </div>
+            <div id="modal-stall-badge" class="stall-badge">Stall S1</div>
+          </div>
+          
+          <h2 class="product-title" id="modal-prod-name">Nike Air Jordan 1</h2>
+          
+          <div class="product-price-row">
+            <span class="price-currency">GHS</span>
+            <span class="price-val" id="modal-prod-price">480.00</span>
+            <span class="stock-pill" id="modal-prod-stock">In Stock (7 left)</span>
+          </div>
+
+          <p class="product-desc" id="modal-prod-desc">Classic high-top silhouette in iconic colorway.</p>
+
+          <div class="variant-selector-label">Select Option / Size</div>
+          <div class="variant-chips" id="modal-variant-chips"></div>
+
+          <button class="btn-primary-action" id="modal-add-stack-btn">
+            <span>📦</span> Pick Up & Stack to Hands
+          </button>
+        </div>
+      </div>
+
+      <!-- MODAL 2: Cart & MoMo Checkout Drawer -->
+      <div class="modal-overlay" id="checkout-modal">
+        <div class="modal-card">
+          <button class="modal-close" id="checkout-modal-close">&times;</button>
+          
+          <div class="brand-title" style="margin-bottom: 4px;">
+            <span>🛒</span> Ready Mall Cashier Counter
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px;">
+            Your character is carrying these items to the register.
+          </p>
+
+          <!-- Cart Items List -->
+          <div class="cart-list" id="cart-items-container"></div>
+
+          <!-- Checkout Form -->
+          <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; margin-top: 10px;">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-input" id="cust-name" value="Kofi Mensah" placeholder="Your name" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Ghana MoMo Number</label>
+              <input type="tel" class="form-input" id="cust-phone" value="024 412 3456" placeholder="024 XXX XXXX" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Delivery Address in Accra</label>
+              <input type="text" class="form-input" id="cust-address" value="East Legon, near ANC Mall" placeholder="e.g. Osu, Spintex, Airport..." />
+            </div>
+
+            <div class="form-label">Choose Mobile Money Network</div>
+            <div class="network-selector">
+              <div class="network-option active" data-network="MTN MoMo">
+                <div class="network-icon">🟡</div>
+                <div class="network-name">MTN MoMo</div>
+              </div>
+              <div class="network-option" data-network="Telecel Cash">
+                <div class="network-icon">🔴</div>
+                <div class="network-name">Telecel Cash</div>
+              </div>
+              <div class="network-option" data-network="AT Money">
+                <div class="network-icon">🔵</div>
+                <div class="network-name">AT Money</div>
+              </div>
+            </div>
+
+            <button class="btn-primary-action" id="paystack-trigger-btn">
+              <span id="pay-button-label">Pay GHS 0.00 with MoMo</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 3: Paystack Ghana MoMo USSD Simulation Modal -->
+      <div class="modal-overlay" id="paystack-modal">
+        <div class="modal-card paystack-card">
+          <div class="paystack-logo">paystack</div>
+          <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Ghana Mobile Money Gateway</div>
+          
+          <div class="momo-spinner"></div>
+          
+          <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px;">Authorizing MoMo Payment</h3>
+          <p id="paystack-prompt-msg" style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 16px;">
+            A payment prompt for <b>GHS <span id="paystack-modal-amount">0.00</span></b> has been sent to your phone (<span id="paystack-modal-phone">024...</span>).
+          </p>
+          <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; font-size: 0.82rem; color: #f59e0b; margin-bottom: 20px;">
+            📱 Check your phone and enter your 4-digit MoMo PIN to authorize.
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button class="btn-primary-action" id="simulate-momo-approve-btn" style="background: #00c3f7; color: #000;">
+              ✓ Authorize (Simulate PIN Entry)
+            </button>
+            <button class="modal-close-secondary" id="cancel-paystack-btn" style="background: rgba(255,255,255,0.1); border:none; color:#fff; border-radius:12px; padding:0 14px; cursor:pointer;">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 4: Merchant Management Dashboard -->
+      <div class="modal-overlay" id="merchant-modal">
+        <div class="modal-card" style="max-width: 600px;">
+          <button class="modal-close" id="merchant-modal-close">&times;</button>
+          
+          <div class="brand-title" style="margin-bottom: 4px;">
+            <span>🏬</span> Accra Mall Merchant Portal
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">
+            Live store management & instant rider dispatch for shop owners.
+          </p>
+
+          <!-- Store Switcher Tabs -->
+          <div class="variant-chips" id="merchant-store-tabs"></div>
+
+          <!-- Merchant Stats -->
+          <div class="merchant-stats-grid">
+            <div class="stat-box">
+              <div class="stat-val" id="stat-revenue">GHS 1,100</div>
+              <div class="stat-title">Today's Sales</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-orders-count">2</div>
+              <div class="stat-title">Paid Orders</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" style="color: #10b981;">Online</div>
+              <div class="stat-title">Store Status</div>
+            </div>
+          </div>
+
+          <!-- Live Orders Stream -->
+          <h3 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span>📦 Incoming Realtime Orders</span>
+            <span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">● Live Supabase Channel</span>
+          </h3>
+
+          <div id="merchant-orders-list"></div>
+
+          <!-- Add Product CTA -->
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);">
+            <button id="open-add-product-btn" style="width:100%;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(251,191,36,0.1));border:1px solid rgba(245,158,11,0.35);border-radius:14px;padding:12px;color:var(--primary);font-weight:700;font-size:0.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+              <span>📸</span> List New Product — Go Live Instantly
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 5: GTA-Style Stall Catalog & Storefront Menu -->
+      <div class="modal-overlay" id="stall-catalog-modal">
+        <div class="modal-card stall-catalog-card">
+          <button class="modal-close" id="stall-catalog-close">&times;</button>
+          
+          <!-- Stall Header Banner -->
+          <div class="stall-header-banner" id="catalog-header-banner">
+            <div class="stall-badge-row">
+              <span class="stall-num-badge" id="catalog-stall-num">STALL S1</span>
+              <span class="district-badge" id="catalog-district-name">👟 Shoe & Footwear District</span>
+            </div>
+            <h2 class="stall-catalog-title" id="catalog-store-name">Kwame's Kicks</h2>
+            <p class="stall-catalog-tagline" id="catalog-store-tagline">High-heat Jordan 1s, Dunks & Streetwear Grails</p>
+            <div class="stall-merchant-info">
+              <span>Owner: <b id="catalog-owner-name">Kwame Mensah</b></span>
+              <span>•</span>
+              <a id="catalog-whatsapp-link" href="#" target="_blank" class="catalog-wa-link">💬 WhatsApp Stall</a>
+            </div>
+          </div>
+
+          <!-- Instructions / Subhead -->
+          <div class="catalog-menu-subhead">
+            <span>🛍️ ALL ITEMS OFFERED BY THIS STALL</span>
+            <span id="catalog-products-count" class="catalog-count-pill">2 Products</span>
+          </div>
+
+          <!-- Product Grid for this Stall -->
+          <div class="stall-products-grid" id="catalog-products-grid"></div>
+
+          <!-- Bottom Stack Summary in Modal -->
+          <div class="catalog-bottom-bar">
+            <div class="catalog-stack-info">
+              <div>Carrying: <b id="catalog-carried-count">0 items</b> (<span id="catalog-carried-total">GHS 0</span>)</div>
+              <div class="catalog-carried-sub">Items stack in your character's hands</div>
+            </div>
+            <button class="btn-checkout-jump" id="catalog-goto-checkout-btn">
+              <span>💳</span> Go to Cashier
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL 6: Exit Confirmation Prompt -->
+      <div class="modal-overlay" id="exit-modal">
+        <div class="modal-card" style="max-width: 440px; text-align: center; padding: 28px 24px;">
+          <div style="font-size: 3rem; margin-bottom: 8px;">🚪</div>
+          <h2 class="stall-catalog-title" style="margin-bottom: 8px;">Exit Ready Mall?</h2>
+          <p id="exit-modal-msg" style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 22px;">
+            Are you sure you want to leave the shopping mall?
+          </p>
+
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn-primary-action" id="confirm-exit-btn" style="background: #ef4444; color: #fff; flex: 1;">
+              Confirm & Exit
+            </button>
+            <button class="modal-close-secondary" id="cancel-exit-btn" style="background: rgba(255,255,255,0.12); border:none; color:#fff; border-radius:14px; padding:12px 18px; font-weight:700; cursor:pointer; flex: 1;">
+              Stay in Mall
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FULL EXIT SPLASH SCREEN (Shown when player exits the game) -->
+      <div id="game-exit-screen" class="exit-screen-overlay hidden">
+        <div class="exit-screen-card">
+          <div class="brand-badge" style="justify-content: center; margin-bottom: 14px;">
+            <div class="brand-icon">🏬</div>
+            <div class="brand-title" style="font-size: 1.5rem;">READY <span>MALL</span> <span class="brand-city">ACCRA</span></div>
+          </div>
+
+          <h1 style="font-family: 'Outfit'; font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 8px;">
+            You Left the Mall
+          </h1>
+          <p style="font-size: 0.92rem; color: #94a3b8; line-height: 1.6; margin-bottom: 22px;">
+            Medase! Thank you for visiting Ready Mall Accra.<br/>
+            Your paid orders have been transmitted to the merchants and are ready for dispatch.
+          </p>
+
+          <div class="exit-stats-box">
+            <div class="exit-stat-item">
+              <div class="exit-stat-val" id="exit-stat-orders">0</div>
+              <div class="exit-stat-label">Orders Placed</div>
+            </div>
+            <div class="exit-stat-item">
+              <div class="exit-stat-val" id="exit-stat-spent">GHS 0</div>
+              <div class="exit-stat-label">Total Spent</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn-primary-action" id="reenter-mall-btn" style="font-size: 1.05rem; padding: 14px;">
+              <span>🚶</span> Re-enter Mall Lobby
+            </button>
+            <a href="https://google.com" class="btn-close-browser" style="text-decoration:none; text-align:center; padding: 10px; font-size: 0.85rem; color: #64748b;">
+              Close Shopping Tab
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MODAL 7: Character Wardrobe & Customizer -->
+    <div class="modal-overlay" id="wardrobe-modal">
+      <div class="modal-card wardrobe-card">
+        <button class="modal-close" id="wardrobe-modal-close">&times;</button>
+        <div class="brand-title" style="margin-bottom: 4px;">👕 Character Wardrobe</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;">Customize your mall shopper look. Earn Ready Coins by shopping!</p>
+
+        <!-- Avatar Preview -->
+        <div class="wardrobe-preview-row">
+          <div class="avatar-preview-box" id="avatar-preview-box">
+            <canvas id="avatar-canvas" width="120" height="180"></canvas>
+          </div>
+          <div class="wardrobe-stats">
+            <div class="ready-coins-box">
+              <div class="coins-icon">🪙</div>
+              <div>
+                <div class="coins-val" id="ready-coins-val">250</div>
+                <div class="coins-label">Ready Coins</div>
+              </div>
+            </div>
+            <div class="arcade-upgrades">
+              <div class="upgrade-item" id="upgrade-speed">
+                <div class="upgrade-icon">⚡</div>
+                <div class="upgrade-info">
+                  <div class="upgrade-name">Sprint Boost</div>
+                  <div class="upgrade-desc">+25% run speed</div>
+                </div>
+                <button class="upgrade-buy-btn" data-upgrade="speed" data-cost="100">100🪙</button>
+              </div>
+              <div class="upgrade-item" id="upgrade-stack">
+                <div class="upgrade-icon">📦</div>
+                <div class="upgrade-info">
+                  <div class="upgrade-name">Stack Pro</div>
+                  <div class="upgrade-desc">Carry +2 extra boxes</div>
+                </div>
+                <button class="upgrade-buy-btn" data-upgrade="stack" data-cost="150">150🪙</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outfit Skins -->
+        <div class="wardrobe-section-title">🎽 Choose Outfit</div>
+        <div class="wardrobe-skins-grid" id="wardrobe-skins-grid">
+          <div class="skin-card active" data-skin="yellow" data-color="#f59e0b">
+            <div class="skin-swatch" style="background:#f59e0b;"></div>
+            <div class="skin-name">Yellow Hoodie</div>
+            <div class="skin-price">FREE</div>
+          </div>
+          <div class="skin-card" data-skin="kente" data-color="#dc2626">
+            <div class="skin-swatch kente-swatch"></div>
+            <div class="skin-name">Kente Print</div>
+            <div class="skin-price">80🪙</div>
+          </div>
+          <div class="skin-card" data-skin="black_stars" data-color="#000000">
+            <div class="skin-swatch" style="background:#000;border:3px solid #ffd700;"></div>
+            <div class="skin-name">Black Stars</div>
+            <div class="skin-price">120🪙</div>
+          </div>
+          <div class="skin-card" data-skin="pink" data-color="#ec4899">
+            <div class="skin-swatch" style="background:#ec4899;"></div>
+            <div class="skin-name">Sakura Fit</div>
+            <div class="skin-price">60🪙</div>
+          </div>
+          <div class="skin-card" data-skin="cyber" data-color="#06b6d4">
+            <div class="skin-swatch" style="background:linear-gradient(135deg,#06b6d4,#8b5cf6);"></div>
+            <div class="skin-name">Cyber Look</div>
+            <div class="skin-price">200🪙</div>
+          </div>
+          <div class="skin-card" data-skin="ghana_flag" data-color="#15803d">
+            <div class="skin-swatch" style="background:linear-gradient(180deg,#ef4444 33%,#ffd700 33%,#ffd700 66%,#15803d 66%);"></div>
+            <div class="skin-name">Ghana Flag</div>
+            <div class="skin-price">FREE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 8: My Orders Delivery Tracker -->
+    <div class="modal-overlay" id="orders-modal">
+      <div class="modal-card orders-card">
+        <button class="modal-close" id="orders-modal-close">&times;</button>
+        <div class="brand-title" style="margin-bottom:4px;">📦 My Orders</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;">Live delivery tracking for your Ready Mall orders.</p>
+        <div id="orders-tracker-list"></div>
+        <div id="orders-empty-state" class="orders-empty" style="display:none;">
+          <div style="font-size:3rem;">🛍️</div>
+          <div>No orders yet. Go pick something up!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 9: Merchant — Add New Product Uploader -->
+    <div class="modal-overlay" id="add-product-modal">
+      <div class="modal-card" style="max-width:520px;">
+        <button class="modal-close" id="add-product-modal-close">&times;</button>
+        <div class="brand-title" style="margin-bottom:4px;">📸 List New Product</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:16px;">Add a product to your stall. It will appear immediately in the mall catalog.</p>
+
+        <div class="form-group">
+          <label class="form-label">Product Name</label>
+          <input type="text" class="form-input" id="np-name" placeholder="e.g. Nike Air Force 1 Low" />
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Price (GHS)</label>
+            <input type="number" class="form-input" id="np-price" placeholder="e.g. 350" min="1" />
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Stock Qty</label>
+            <input type="number" class="form-input" id="np-stock" placeholder="e.g. 10" min="1" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-input" id="np-desc" rows="2" placeholder="Describe your product..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category / Stall</label>
+          <select class="form-input" id="np-stall">
+            <option value="store-shoes-1">👟 Kwame's Kicks (Shoe District S1)</option>
+            <option value="store-shoes-2">👠 Abena Luxury (Shoe District S2)</option>
+            <option value="store-shoes-3">👟 Osu Retro Kicks (Shoe District S3)</option>
+            <option value="store-shoes-4">🩴 Slide City (Shoe District S4)</option>
+            <option value="store-tech-1">📱 Kojo Tech Hub (Tech Alley E1)</option>
+            <option value="store-tech-2">💻 Accra Gadget World (Tech Alley E2)</option>
+            <option value="store-groc-1">🛒 Osu Fresh Mart (Groceries G1)</option>
+            <option value="store-food-1">🍔 Chorkor Chop Bar (Food Court F1)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Available Sizes / Variants (comma separated)</label>
+          <input type="text" class="form-input" id="np-variants" placeholder="e.g. UK7, UK8, UK9, UK10" />
+        </div>
+        <div class="form-group" style="margin-bottom:6px;">
+          <label class="form-label">Product Color Theme</label>
+          <div class="color-picker-row" id="np-color-row">
+            <div class="color-swatch active" data-color="#f59e0b" style="background:#f59e0b;"></div>
+            <div class="color-swatch" data-color="#ef4444" style="background:#ef4444;"></div>
+            <div class="color-swatch" data-color="#3b82f6" style="background:#3b82f6;"></div>
+            <div class="color-swatch" data-color="#10b981" style="background:#10b981;"></div>
+            <div class="color-swatch" data-color="#ec4899" style="background:#ec4899;"></div>
+            <div class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6;"></div>
+          </div>
+        </div>
+        <button class="btn-primary-action" id="np-publish-btn" style="margin-top:10px;">
+          <span>🚀</span> Publish to Mall — Live Instantly
+        </button>
+        <div id="np-success-msg" class="np-success hidden">
+          ✅ Product published! It's now live in your stall catalog.
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
