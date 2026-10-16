@@ -47,14 +47,19 @@
 
           <!-- Actions -->
           <div class="hud-actions">
+            <button class="icon-btn mobile-only-btn" id="mobile-search-btn" title="Search Products">🔍</button>
+            <button class="icon-btn mobile-only-btn" id="mobile-radio-btn" title="Mall Radio">📻</button>
             <button class="icon-btn" id="sound-btn" title="Toggle Sound">🔊</button>
             <button class="icon-btn" id="wardrobe-btn" title="Character Wardrobe">👕</button>
             <button class="icon-btn" id="orders-btn" title="My Orders">📦 <span id="orders-badge" class="orders-badge hidden">0</span></button>
-            <button class="merchant-toggle-btn" id="merchant-btn">🏬 Merchant Portal</button>
-            <button class="cart-pill-btn" id="cart-btn">
+            <button class="merchant-toggle-btn" id="merchant-btn" title="Merchant Portal">
+              <span class="merchant-btn-icon">🏬</span>
+              <span class="merchant-btn-text">Merchant Portal</span>
+            </button>
+            <button class="cart-pill-btn" id="cart-btn" title="Shopping Cart">
               <span>🛒</span>
               <span id="cart-counter" class="cart-badge">0</span>
-              <span id="cart-total-badge">GHS 0</span>
+              <span id="cart-total-badge" class="cart-total-text">GHS 0</span>
             </button>
           </div>
         </header>
@@ -88,6 +93,14 @@
           <!-- Desktop Controls Tip -->
           <div class="desktop-controls-hint">
             <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>Arrows</kbd> to Run • <kbd>E</kbd> to Pick Up • Carry stack to <b>Cashier</b>
+          </div>
+
+          <!-- Mobile Action Button (Right Thumb Ergonomics) -->
+          <div class="mobile-action-controls" id="mobile-action-controls">
+            <button class="mobile-action-btn" id="mobile-action-btn" aria-label="Action Button">
+              <span class="mobile-action-icon" id="mobile-action-icon">⚡</span>
+              <span class="mobile-action-label" id="mobile-action-label">SPRINT</span>
+            </button>
           </div>
         </div>
 

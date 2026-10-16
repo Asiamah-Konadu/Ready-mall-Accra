@@ -59,9 +59,13 @@ export class MallGame {
   }
 
   initCamera() {
-    const aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(36, aspect, 0.1, 1000);
-    this.cameraOffset = new THREE.Vector3(0, 22, 22);
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const aspect = width / height;
+    const isPortrait = aspect < 1;
+    const fov = isPortrait ? 50 : 36;
+    this.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
+    this.cameraOffset = isPortrait ? new THREE.Vector3(0, 24, 24) : new THREE.Vector3(0, 22, 22);
     this.camera.position.copy(this.cameraOffset);
     this.camera.lookAt(0, 0, 0);
   }
@@ -1093,6 +1097,94 @@ export class MallGame {
     });
   }
 
+  createOwnerTexture(store) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1536;
+    canvas.height = 240;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // Pure dark backdrop
+    ctx.fillStyle = '#060a12';
+    ctx.fillRect(0, 0, 1536, 240);
+
+    // Glowing Accra Gold border
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 14;
+    ctx.strokeRect(7, 7, 1522, 226);
+
+    // Top gold ribbon
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(7, 7, 1522, 54);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 32px "Outfit", system-ui, sans-serif';
+    ctx.fillStyle = '#000000';
+    ctx.fillText(`👑  STALL OWNER  •  ${(store.stallNumber || 'STALL').toUpperCase()}`, 768, 35);
+
+    // Big, thick, bold white owner name
+    ctx.font = '900 96px "Outfit", system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText((store.owner || 'Accra Merchant').toUpperCase(), 768, 148);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    const maxAniso = this.renderer ? this.renderer.capabilities.getMaxAnisotropy() : 16;
+    texture.anisotropy = maxAniso;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  createBannerTexture(store) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2048;
+    canvas.height = 360;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const themeHex = store.hexColor || '#f59e0b';
+
+    // Pure dark backdrop
+    ctx.fillStyle = '#060a12';
+    ctx.fillRect(0, 0, 2048, 360);
+
+    // Stall theme border
+    ctx.strokeStyle = themeHex;
+    ctx.lineWidth = 16;
+    ctx.strokeRect(8, 8, 2032, 344);
+
+    // Top Owner Header Bar
+    ctx.fillStyle = themeHex;
+    ctx.fillRect(8, 8, 2032, 70);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 38px "Outfit", system-ui, sans-serif';
+    ctx.fillStyle = '#000000';
+    ctx.fillText(`👑 OWNER: ${store.owner.toUpperCase()}  •  ${store.stallNumber.toUpperCase()}`, 1024, 43);
+
+    // Store Name with Icon - extra bold and crisp
+    ctx.font = '900 135px "Outfit", system-ui, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`${store.icon} ${store.name.toUpperCase()}`, 1024, 220);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    const maxAniso = this.renderer ? this.renderer.capabilities.getMaxAnisotropy() : 16;
+    texture.anisotropy = maxAniso;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
   createSquareStall(cfg) {
     const { store, x, z, w, d, rot, themeColor, stripeColor, shelves } = cfg;
     if (!store) return;
@@ -1172,19 +1264,62 @@ export class MallGame {
     }
     stallGroup.add(awningGroup);
 
-    // 5. Overhead 3D Merchant Signboard
-    const signBoard = new THREE.Mesh(
-      new THREE.BoxGeometry(w * 0.9, 0.9, 0.2),
-      new THREE.MeshStandardMaterial({
-        color: themeColor,
-        roughness: 0.2,
-        emissive: themeColor,
-        emissiveIntensity: 0.4
-      })
-    );
-    signBoard.position.set(0, wallHeight + 0.8, d / 2 + 0.2);
+
+
+    // 5. Overhead 3D Merchant Signboard & Top Owner Plaque
+    const bannerTexture = this.createBannerTexture(store);
+    const ownerTexture = this.createOwnerTexture(store);
+
+    const sideMat = new THREE.MeshStandardMaterial({
+      color: 0x090d16,
+      roughness: 0.35,
+      metalness: 0.6
+    });
+
+    const bannerMat = new THREE.MeshStandardMaterial({
+      map: bannerTexture,
+      roughness: 0.25,
+      metalness: 0.1,
+      emissive: new THREE.Color(0xffffff),
+      emissiveMap: bannerTexture,
+      emissiveIntensity: 0.2
+    });
+
+    // Main Banner - 1.15m height, tilted toward overhead camera for crisp legibility
+    const signBoardMaterials = [sideMat, sideMat, sideMat, sideMat, bannerMat, bannerMat];
+    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(w * 0.95, 1.15, 0.2), signBoardMaterials);
+    signBoard.position.set(0, wallHeight + 0.85, d / 2 + 0.2);
+    signBoard.rotation.x = -0.26;
     signBoard.castShadow = true;
     stallGroup.add(signBoard);
+
+    // 5B. Owner's Name Plaque mounted ON TOP of the Stall's Banner - 0.75m height for clear visibility
+    const ownerMat = new THREE.MeshStandardMaterial({
+      map: ownerTexture,
+      roughness: 0.25,
+      metalness: 0.1,
+      emissive: new THREE.Color(0xffffff),
+      emissiveMap: ownerTexture,
+      emissiveIntensity: 0.25
+    });
+
+    const ownerMaterials = [sideMat, sideMat, sideMat, sideMat, ownerMat, ownerMat];
+    const ownerPlaque = new THREE.Mesh(new THREE.BoxGeometry(w * 0.85, 0.75, 0.16), ownerMaterials);
+    ownerPlaque.position.set(0, wallHeight + 1.88, d / 2 + 0.46);
+    ownerPlaque.rotation.x = -0.26;
+    ownerPlaque.castShadow = true;
+    stallGroup.add(ownerPlaque);
+
+    // Dual Golden Struts Connecting Owner Plaque to Main Banner
+    [-w * 0.25, w * 0.25].forEach(sx => {
+      const strut = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.045, 0.045, 0.45, 10),
+        new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.9, roughness: 0.1 })
+      );
+      strut.position.set(sx, wallHeight + 1.48, d / 2 + 0.35);
+      strut.rotation.x = -0.26;
+      stallGroup.add(strut);
+    });
 
     // 6. Vendor NPC standing inside behind back counter
     const vendorGroup = new THREE.Group();
@@ -1565,7 +1700,15 @@ export class MallGame {
       if (!this.container) return;
       const width = this.container.clientWidth;
       const height = this.container.clientHeight;
-      this.camera.aspect = width / height;
+      const aspect = width / height;
+      const isPortrait = aspect < 1;
+      this.camera.aspect = aspect;
+      this.camera.fov = isPortrait ? 50 : 36;
+      if (isPortrait) {
+        this.cameraOffset.set(0, 24, 24);
+      } else {
+        this.cameraOffset.set(0, 22, 22);
+      }
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(width, height);
     });
@@ -1620,6 +1763,17 @@ export class MallGame {
     if (Math.abs(x) > 0.05 || Math.abs(y) > 0.05) {
       this.clickTarget = null;
     }
+  }
+
+  triggerSprintBoost() {
+    if (this.isSprinting) return;
+    this.isSprinting = true;
+    const baseSpeed = 10.5;
+    this.speed = baseSpeed * 1.5;
+    setTimeout(() => {
+      this.speed = baseSpeed;
+      this.isSprinting = false;
+    }, 1800);
   }
 
   interactCurrentTrigger() {

@@ -170,6 +170,14 @@ export class MallUI {
     this.npPublishBtn = document.getElementById('np-publish-btn');
     this.npSuccessMsg = document.getElementById('np-success-msg');
     this.npColorRow = document.getElementById('np-color-row');
+
+    // Mobile controls & toggles
+    this.hudSearchWrap = document.querySelector('.hud-search-wrap');
+    this.mobileSearchBtn = document.getElementById('mobile-search-btn');
+    this.mobileRadioBtn = document.getElementById('mobile-radio-btn');
+    this.mobileActionBtn = document.getElementById('mobile-action-btn');
+    this.mobileActionIcon = document.getElementById('mobile-action-icon');
+    this.mobileActionLabel = document.getElementById('mobile-action-label');
   }
 
   bindEvents() {
@@ -305,35 +313,120 @@ export class MallUI {
         this.addProductModal.classList.add('active');
       }
     });
+
+    // Minimap toggle (expand / collapse on mobile)
+    if (this.minimapToggleBtn && this.minimapContainer) {
+      const toggleMinimap = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.minimapContainer.classList.toggle('collapsed');
+      };
+      this.minimapToggleBtn.addEventListener('click', toggleMinimap);
+      this.minimapToggleBtn.addEventListener('touchstart', toggleMinimap, { passive: false });
+    }
+
+    // Mobile Search toggle
+    if (this.mobileSearchBtn && this.hudSearchWrap) {
+      this.mobileSearchBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.hudSearchWrap.classList.toggle('mobile-open');
+        if (this.hudSearchWrap.classList.contains('mobile-open') && this.hudSearchInput) {
+          this.hudSearchInput.focus();
+        }
+      });
+    }
+
+    // Mobile Radio toggle
+    if (this.mobileRadioBtn && this.radioWidget) {
+      this.mobileRadioBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.radioWidget.classList.toggle('mobile-open');
+        this.toggleRadio();
+      });
+    }
+
+    // Mobile Action Button (Right Thumb Ergonomics)
+    if (this.mobileActionBtn) {
+      const triggerAction = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.game.currentTrigger) {
+          this.game.interactCurrentTrigger();
+        } else {
+          this.game.triggerSprintBoost();
+          if (this.mobileActionLabel) {
+            const old = this.mobileActionLabel.textContent;
+            this.mobileActionLabel.textContent = "BOOST!";
+            setTimeout(() => {
+              if (!this.game.currentTrigger && this.mobileActionLabel) {
+                this.mobileActionLabel.textContent = old;
+              }
+            }, 1000);
+          }
+        }
+      };
+      this.mobileActionBtn.addEventListener('touchstart', triggerAction, { passive: false });
+      this.mobileActionBtn.addEventListener('click', triggerAction);
+    }
   }
 
   handleProximity(trigger) {
     if (!trigger) {
       this.proximityBanner.classList.add('hidden');
+      if (this.mobileActionBtn) {
+        this.mobileActionBtn.classList.remove('active-trigger', 'action-stall', 'action-checkout', 'action-product', 'action-exit');
+        if (this.mobileActionIcon) this.mobileActionIcon.textContent = '⚡';
+        if (this.mobileActionLabel) this.mobileActionLabel.textContent = 'SPRINT';
+      }
       return;
     }
 
     this.proximityBanner.classList.remove('hidden');
 
+    if (this.mobileActionBtn) {
+      this.mobileActionBtn.classList.add('active-trigger');
+      this.mobileActionBtn.classList.remove('action-stall', 'action-checkout', 'action-product', 'action-exit');
+    }
+
     if (trigger.type === 'exit_door') {
       this.promptMainText.textContent = `🚪 Exit Ready Mall?`;
       this.promptSubText.textContent = `Automatic Sliding Doors • Press E or Tap to Leave`;
+      if (this.mobileActionBtn) {
+        this.mobileActionBtn.classList.add('action-exit');
+        if (this.mobileActionIcon) this.mobileActionIcon.textContent = '🚪';
+        if (this.mobileActionLabel) this.mobileActionLabel.textContent = 'EXIT';
+      }
     } else if (trigger.type === 'stall_catalog') {
       const s = trigger.store;
       this.promptMainText.textContent = `Browse ${s.name} (${s.stallNumber})`;
       this.promptSubText.textContent = `GTA Cylinder Activated • Press E or Tap to view full stall menu!`;
+      if (this.mobileActionBtn) {
+        this.mobileActionBtn.classList.add('action-stall');
+        if (this.mobileActionIcon) this.mobileActionIcon.textContent = '🛍️';
+        if (this.mobileActionLabel) this.mobileActionLabel.textContent = 'SHOP';
+      }
     } else if (trigger.type === 'product') {
       const p = trigger.product;
       const store = STORES.find(s => s.id === p.storeId);
       const stallLabel = store ? `${store.name} (${store.stallNumber})` : 'Mall Stall';
       this.promptMainText.textContent = `Inspect ${p.name}`;
       this.promptSubText.textContent = `${stallLabel} • GHS ${p.price.toFixed(2)} • Tap to inspect & stack`;
+      if (this.mobileActionBtn) {
+        this.mobileActionBtn.classList.add('action-product');
+        if (this.mobileActionIcon) this.mobileActionIcon.textContent = '📦';
+        if (this.mobileActionLabel) this.mobileActionLabel.textContent = 'PICK';
+      }
     } else if (trigger.type === 'checkout') {
       this.promptMainText.textContent = `Accra Mall Cashier Counter`;
       const count = this.cart.length;
       this.promptSubText.textContent = count > 0 
         ? `You have ${count} item(s) in stack. Tap to Pay with MoMo!`
         : `Empty stack. Pick up items from the shelves first!`;
+      if (this.mobileActionBtn) {
+        this.mobileActionBtn.classList.add('action-checkout');
+        if (this.mobileActionIcon) this.mobileActionIcon.textContent = '💳';
+        if (this.mobileActionLabel) this.mobileActionLabel.textContent = 'PAY';
+      }
     }
   }
 
@@ -775,6 +868,7 @@ export class MallUI {
     let isDragging = false;
     let startX = 0;
     let startY = 0;
+    let touchIdentifier = null;
     const maxRadius = 45;
 
     const handleStart = (clientX, clientY) => {
@@ -782,6 +876,7 @@ export class MallUI {
       const rect = this.joystickZone.getBoundingClientRect();
       startX = rect.left + rect.width / 2;
       startY = rect.top + rect.height / 2;
+      this.joystickZone.classList.add('active');
       handleMove(clientX, clientY);
     };
 
@@ -805,23 +900,39 @@ export class MallUI {
     const handleEnd = () => {
       if (!isDragging) return;
       isDragging = false;
+      touchIdentifier = null;
+      this.joystickZone.classList.remove('active');
       this.joystickKnob.style.transform = `translate(0px, 0px)`;
       this.game.setJoystickVector(0, 0);
     };
 
-    // Touch events for mobile
+    // Touch events for mobile with identifier tracking for multi-touch reliability
     this.joystickZone.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      handleStart(e.touches[0].clientX, e.touches[0].clientY);
-    });
+      const touch = e.changedTouches[0];
+      touchIdentifier = touch.identifier;
+      handleStart(touch.clientX, touch.clientY);
+    }, { passive: false });
 
     window.addEventListener('touchmove', (e) => {
-      if (isDragging) {
-        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      if (!isDragging) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchIdentifier) {
+          handleMove(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+          break;
+        }
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchend', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchIdentifier) {
+          handleEnd();
+          break;
+        }
       }
     });
 
-    window.addEventListener('touchend', () => handleEnd());
     window.addEventListener('touchcancel', () => handleEnd());
 
     // Mouse events for desktop testing of joystick
