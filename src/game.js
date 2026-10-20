@@ -5,7 +5,7 @@ import { sound } from './sound.js';
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 export class MallGame {
-  constructor(canvasContainer, stores = [], products = [], onProximityChange, onOpenProduct, onOpenCheckout, onOpenStallCatalog, onOpenExitPrompt) {
+  constructor(canvasContainer, stores = [], products = [], onProximityChange, onOpenProduct, onOpenCheckout, onOpenStallCatalog, onOpenExitPrompt, onOpenElevator) {
     this.container = canvasContainer;
     this.stores = stores;
     this.products = products;
@@ -14,6 +14,8 @@ export class MallGame {
     this.onOpenCheckout = onOpenCheckout;
     this.onOpenStallCatalog = onOpenStallCatalog;
     this.onOpenExitPrompt = onOpenExitPrompt;
+    this.onOpenElevator = onOpenElevator;
+    this.currentFloor = 1;
 
     // GTA Glowing Cylinders list
     this.glowingCylinders = [];
@@ -188,6 +190,9 @@ export class MallGame {
 
     // Central Fountain & Indoor Palms
     this.buildLobbyDecor();
+
+    // Grand Panoramic Glass Sky Elevator (Floors 1-3)
+    this.buildGlassElevator();
 
     // Cashier Checkout Counter
     this.buildCashierCounter();
@@ -991,305 +996,185 @@ export class MallGame {
     this.scene.add(archGroup);
   }
 
-  // BUILD THE SQUARE STALLS ARCHITECTURE
+  // BUILD GRAND PANORAMIC GLASS SKY ELEVATOR
+  buildGlassElevator() {
+    const elevatorGroup = new THREE.Group();
+    elevatorGroup.position.set(0, 0, -14.5);
+
+    // 4 Polished Brass Shaft Columns reaching up 15 meters
+    const brassMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      metalness: 0.85,
+      roughness: 0.2
+    });
+    const colRadius = 0.16;
+    const colHeight = 15;
+    [[-1.8, -1.8], [1.8, -1.8], [-1.8, 1.8], [1.8, 1.8]].forEach(([cx, cz]) => {
+      const col = new THREE.Mesh(
+        new THREE.CylinderGeometry(colRadius, colRadius, colHeight, 16),
+        brassMat
+      );
+      col.position.set(cx, colHeight / 2, cz);
+      col.castShadow = true;
+      elevatorGroup.add(col);
+    });
+
+    // Outer Cylindrical Glass Curtain Wall
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.3,
+      roughness: 0.1,
+      metalness: 0.8
+    });
+    const glassCyl = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.3, 2.3, colHeight, 32, 1, true),
+      glassMat
+    );
+    glassCyl.position.y = colHeight / 2;
+    elevatorGroup.add(glassCyl);
+
+    // Decorative Floor & Roof Caps
+    const capGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.4, 32);
+    const baseCap = new THREE.Mesh(capGeo, brassMat);
+    baseCap.position.y = 0.2;
+    elevatorGroup.add(baseCap);
+
+    const roofCap = new THREE.Mesh(capGeo, brassMat);
+    roofCap.position.y = colHeight;
+    elevatorGroup.add(roofCap);
+
+    // Illuminated Elevator Lintel Sign
+    const signBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(4.2, 0.8, 0.3),
+      new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        emissive: 0xf59e0b,
+        emissiveIntensity: 0.4
+      })
+    );
+    signBoard.position.set(0, 3.8, 2.3);
+    elevatorGroup.add(signBoard);
+
+    // Warm Interior Lift Chandelier Light
+    const liftLight = new THREE.PointLight(0xffedd5, 1.8, 8);
+    liftLight.position.set(0, 3.0, 0);
+    elevatorGroup.add(liftLight);
+
+    this.scene.add(elevatorGroup);
+
+    // GTA-style Glowing Lift Cylinder in front of the elevator doors
+    this.createGlowingCylinder(
+      new THREE.Vector3(0, 0, -11.5),
+      1.6,
+      2.8,
+      0xf59e0b,
+      { id: 'elevator', name: 'Sky Glass Elevator (Floors 1 - 3)', isElevator: true }
+    );
+  }
+
+  // PROCEDURAL STALL SLOT ALLOCATOR
+  getStallSlot(zone, index) {
+    const slots = {
+      shoes: [
+        { x: -18, z: -19, rot: 0 },
+        { x: -8,  z: -19, rot: 0 },
+        { x: -18, z: -8,  rot: Math.PI },
+        { x: -8,  z: -8,  rot: Math.PI },
+        { x: -28, z: -19, rot: 0 },
+        { x: -28, z: -8,  rot: Math.PI }
+      ],
+      tech: [
+        { x: 8,   z: -19, rot: 0 },
+        { x: 18,  z: -19, rot: 0 },
+        { x: 8,   z: -8,  rot: Math.PI },
+        { x: 18,  z: -8,  rot: Math.PI },
+        { x: 28,  z: -19, rot: 0 },
+        { x: 28,  z: -8,  rot: Math.PI }
+      ],
+      groceries: [
+        { x: -18, z: 8,   rot: 0 },
+        { x: -8,  z: 8,   rot: 0 },
+        { x: -18, z: 19,  rot: Math.PI },
+        { x: -8,  z: 19,  rot: Math.PI },
+        { x: -28, z: 8,   rot: 0 },
+        { x: -28, z: 19,  rot: Math.PI }
+      ],
+      food: [
+        { x: 8,   z: 8,   rot: 0 },
+        { x: 18,  z: 8,   rot: 0 },
+        { x: 8,   z: 19,  rot: Math.PI },
+        { x: 18,  z: 19,  rot: Math.PI },
+        { x: 28,  z: 8,   rot: 0 },
+        { x: 28,  z: 19,  rot: Math.PI }
+      ],
+      fashion: [
+        { x: -26, z: -1,  rot: -Math.PI / 2 },
+        { x: -26, z: 6,   rot: -Math.PI / 2 },
+        { x: 26,  z: -1,  rot: Math.PI / 2 },
+        { x: 26,  z: 6,   rot: Math.PI / 2 },
+        { x: -26, z: -10, rot: -Math.PI / 2 },
+        { x: 26,  z: -10, rot: Math.PI / 2 }
+      ]
+    };
+
+    const zoneSlots = slots[zone] || slots.shoes;
+    if (index < zoneSlots.length) {
+      return zoneSlots[index];
+    }
+    // Procedural expansion for overflow vendors beyond initial slots
+    const overflow = index - zoneSlots.length;
+    const isWest = (zone === 'shoes' || zone === 'groceries' || zone === 'fashion');
+    const signX = isWest ? -1 : 1;
+    return {
+      x: signX * (14 + (overflow % 3) * 6.5),
+      z: -24 + Math.floor(overflow / 3) * 6.5,
+      rot: 0
+    };
+  }
+
+  // BUILD A SINGLE SQUARE STALL DYNAMICALLY
+  addStoreStall(store, zoneIndex = 0) {
+    const zone = store.zone || 'shoes';
+    const slot = this.getStallSlot(zone, zoneIndex);
+    const themeColor = store.themeColor ?? (store.hexColor ? parseInt(store.hexColor.replace('#', ''), 16) : 0xf59e0b);
+
+    // Look up real products for this store's display podiums
+    const storeProducts = (this.products || []).filter(p => p.storeId === store.id);
+    const shelves = storeProducts.length > 0
+      ? storeProducts.slice(0, 2).map((p, idx) => ({
+          prodId: p.id,
+          localX: idx === 0 ? -1.6 : 1.6,
+          localZ: 1.2
+        }))
+      : [];
+
+    const cfg = {
+      store,
+      x: slot.x,
+      z: slot.z,
+      w: (zone === 'fashion') ? 6.2 : 6.8,
+      d: (zone === 'fashion') ? 5.8 : 6.8,
+      rot: slot.rot,
+      themeColor,
+      stripeColor: 0xffffff,
+      shelves
+    };
+
+    this.createSquareStall(cfg);
+    return slot;
+  }
+
+  // BUILD ALL STALLS PROCEDURALLY FROM DATABASE
   buildSquareStalls() {
     this.stallMeshes = [];
+    const zoneCounters = {};
 
-    // STALL LOCATIONS CONFIGURATION: 20 AUTHENTIC GHANAIAN VENDORS
-    const stallConfigs = [
-      // === 1. SHOE & FOOTWEAR DISTRICT (4 STALLS) ===
-      {
-        store: this.stores.find(s => s.id === "store-shoes-1") || this.stores[0], // Kwame's Kicks (Stall S1)
-        x: -18,
-        z: -19,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0xef4444,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-kwame-1", localX: -1.8, localZ: 1.2 }, // Jordan 1
-          { prodId: "prod-kwame-2", localX: 1.8, localZ: 1.2 }   // Dunk Low Panda
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-shoes-2") || this.stores[1], // Abena Luxury (Stall S2)
-        x: -8,
-        z: -19,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0xec4899,
-        stripeColor: 0xfef08a,
-        shelves: [
-          { prodId: "prod-abena-1", localX: -1.8, localZ: 1.2 }, // Red Sole Pumps
-          { prodId: "prod-abena-2", localX: 1.8, localZ: 1.2 }   // Loafers
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-shoes-3") || this.stores[2], // Osu Retro Kicks (Stall S3)
-        x: -18,
-        z: -8,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0x06b6d4,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-osu-1", localX: -1.8, localZ: 1.2 },  // New Balance 550
-          { prodId: "prod-osu-2", localX: 1.8, localZ: 1.2 }   // Samba
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-shoes-4") || this.stores[3], // Slide City & Care (Stall S4)
-        x: -8,
-        z: -8,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0xf59e0b,
-        stripeColor: 0x1e293b,
-        shelves: [
-          { prodId: "prod-slide-1", localX: -1.8, localZ: 1.2 }, // Foam Slides
-          { prodId: "prod-slide-2", localX: 1.8, localZ: 1.2 }  // Cleaning Kit
-        ]
-      },
-
-      // === 2. TECH ALLEY STALLS (4 STALLS) ===
-      {
-        store: this.stores.find(s => s.id === "store-tech-1") || this.stores[4], // Kojo Tech Hub (Stall E1)
-        x: 8,
-        z: -19,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0x3b82f6,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-tech-1", localX: -1.8, localZ: 1.2 }, // AirPods Pro
-          { prodId: "prod-tech-2", localX: 1.8, localZ: 1.2 }   // 20W Fast Charger
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-tech-2") || this.stores[5], // Accra Gadget World (Stall E2)
-        x: 18,
-        z: -19,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0x8b5cf6,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-tech-3", localX: -1.8, localZ: 1.2 }, // Anker 737
-          { prodId: "prod-tech-4", localX: 1.8, localZ: 1.2 }   // Oraimo FreePods
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-tech-3") || this.stores[6], // iStore Osu Specialist (Stall E3)
-        x: 8,
-        z: -8,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0x0284c7,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-tech-5", localX: -1.8, localZ: 1.2 }, // MagSafe Case
-          { prodId: "prod-tech-6", localX: 1.8, localZ: 1.2 }   // Watch Ocean Band
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-tech-4") || this.stores[7], // CompuGhana Circle (Stall E4)
-        x: 18,
-        z: -8,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0x6366f1,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-tech-7", localX: -1.8, localZ: 1.2 }, // MX Master 3S
-          { prodId: "prod-tech-8", localX: 1.8, localZ: 1.2 }   // Keychron K2
-        ]
-      },
-
-      // === 3. GROCERIES BAZAAR STALLS (4 STALLS) ===
-      {
-        store: this.stores.find(s => s.id === "store-groc-1") || this.stores[8], // Osu Fresh Mart (Stall G1)
-        x: -18,
-        z: 8,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0x10b981,
-        stripeColor: 0xfef08a,
-        shelves: [
-          { prodId: "prod-groc-1", localX: -1.8, localZ: 1.2 }, // Kingsbite Chocolate
-          { prodId: "prod-groc-2", localX: 1.8, localZ: 1.2 }   // Choco-Bake
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-groc-2") || this.stores[9], // Makola Spice & Grains (Stall G2)
-        x: -8,
-        z: 8,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0xd97706,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-groc-3", localX: -1.8, localZ: 1.2 }, // Black Pepper Shito
-          { prodId: "prod-groc-4", localX: 1.8, localZ: 1.2 }   // Volta Gari
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-groc-3") || this.stores[10], // Danpong Wellness (Stall G3)
-        x: -18,
-        z: 19,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0x059669,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-groc-5", localX: -1.8, localZ: 1.2 }, // Forest Honey
-          { prodId: "prod-groc-6", localX: 1.8, localZ: 1.2 }   // Moringa Powder
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-groc-4") || this.stores[11], // Golden Tree Emporium (Stall G4)
-        x: -8,
-        z: 19,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0xb45309,
-        stripeColor: 0xffedd5,
-        shelves: [
-          { prodId: "prod-groc-7", localX: -1.8, localZ: 1.2 }, // Pebbles Milk Candies
-          { prodId: "prod-groc-8", localX: 1.8, localZ: 1.2 }   // Tetteh Quarshie Dark
-        ]
-      },
-
-      // === 4. FOOD COURT STALLS (4 STALLS) ===
-      {
-        store: this.stores.find(s => s.id === "store-food-1") || this.stores[12], // Chorkor Chop Bar (Stall F1)
-        x: 8,
-        z: 8,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0xf97316,
-        stripeColor: 0xffedd5,
-        shelves: [
-          { prodId: "prod-food-1", localX: -1.8, localZ: 1.2 }, // Ghana Jollof
-          { prodId: "prod-food-2", localX: 1.8, localZ: 1.2 }   // Accra Suya Pizza
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-food-2") || this.stores[13], // Asanka Local Chop House (Stall F2)
-        x: 18,
-        z: 8,
-        w: 6.8,
-        d: 6.8,
-        rot: 0,
-        themeColor: 0xe11d48,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-food-3", localX: -1.8, localZ: 1.2 }, // Fufu & Goat Soup
-          { prodId: "prod-food-4", localX: 1.8, localZ: 1.2 }   // Fried Red Fish & Kenkey
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-food-3") || this.stores[14], // Buka Restaurant Express (Stall F3)
-        x: 8,
-        z: 19,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0xca8a04,
-        stripeColor: 0xfef08a,
-        shelves: [
-          { prodId: "prod-food-5", localX: -1.8, localZ: 1.2 }, // Grilled Tilapia & Banku
-          { prodId: "prod-food-6", localX: 1.8, localZ: 1.2 }   // Beef Suya Skewers
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-food-4") || this.stores[15], // Starbites Accra Cafe (Stall F4)
-        x: 18,
-        z: 19,
-        w: 6.8,
-        d: 6.8,
-        rot: Math.PI,
-        themeColor: 0x9333ea,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-food-7", localX: -1.8, localZ: 1.2 }, // Ghanaian Meat Pies
-          { prodId: "prod-food-8", localX: 1.8, localZ: 1.2 }   // Chilled Sobolo
-        ]
-      },
-
-      // === 5. FASHION & BEAUTY ARCADE (4 STALLS) ===
-      {
-        store: this.stores.find(s => s.id === "store-fash-1") || this.stores[16], // Royal Bonwire Kente (Stall C1)
-        x: -26,
-        z: -1,
-        w: 6.2,
-        d: 5.8,
-        rot: -Math.PI / 2, // Faces East (+X) towards central plaza
-        themeColor: 0xeab308,
-        stripeColor: 0x78350f,
-        shelves: [
-          { prodId: "prod-kente-1", localX: -1.6, localZ: 1.2 }, // Bonwire Kente Stole
-          { prodId: "prod-kente-2", localX: 1.6, localZ: 1.2 }   // Kente Graduation Sash
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-fash-2") || this.stores[17], // Accra Streetwear Club (Stall C2)
-        x: -26,
-        z: 6,
-        w: 6.2,
-        d: 5.8,
-        rot: -Math.PI / 2, // Faces East (+X) towards central plaza
-        themeColor: 0x14b8a6,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-fash-1", localX: -1.6, localZ: 1.2 }, // Accra To The World Tee
-          { prodId: "prod-fash-2", localX: 1.6, localZ: 1.2 }   // Black Star Cap
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-beauty-1") || this.stores[18], // Madina Shea Glow (Stall C3)
-        x: 26,
-        z: -1,
-        w: 6.2,
-        d: 5.8,
-        rot: Math.PI / 2, // Faces West (-X) towards central plaza
-        themeColor: 0x84cc16,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-beauty-1", localX: -1.6, localZ: 1.2 }, // Pure Shea Butter
-          { prodId: "prod-beauty-2", localX: 1.6, localZ: 1.2 }   // African Black Soap
-        ]
-      },
-      {
-        store: this.stores.find(s => s.id === "store-beauty-2") || this.stores[19], // Osu Arabian Oud (Stall C4)
-        x: 26,
-        z: 6,
-        w: 6.2,
-        d: 5.8,
-        rot: Math.PI / 2, // Faces West (-X) towards central plaza
-        themeColor: 0x7c3aed,
-        stripeColor: 0xffffff,
-        shelves: [
-          { prodId: "prod-beauty-3", localX: -1.6, localZ: 1.2 }, // Royal Amber Musk
-          { prodId: "prod-beauty-4", localX: 1.6, localZ: 1.2 }   // Arabian Oud Spray
-        ]
-      }
-    ];
-
-    stallConfigs.forEach(cfg => {
-      this.createSquareStall(cfg);
+    this.stores.forEach(store => {
+      const zone = store.zone || 'shoes';
+      const index = zoneCounters[zone] || 0;
+      zoneCounters[zone] = index + 1;
+      this.addStoreStall(store, index);
     });
   }
 
@@ -1778,8 +1663,9 @@ export class MallGame {
 
     // Register trigger zone
     const isCheckout = store.id === 'cashier';
+    const isElevator = store.id === 'elevator' || store.isElevator;
     this.triggers.push({
-      type: isCheckout ? 'checkout' : 'stall_catalog',
+      type: isCheckout ? 'checkout' : (isElevator ? 'elevator' : 'stall_catalog'),
       id: `cyl-${store.id}`,
       store: store,
       position: worldPos,
@@ -1986,7 +1872,33 @@ export class MallGame {
     } else if (this.currentTrigger.type === 'checkout') {
       sound.playCounterDing();
       this.onOpenCheckout();
+    } else if (this.currentTrigger.type === 'elevator') {
+      sound.playCounterDing();
+      if (this.onOpenElevator) this.onOpenElevator();
     }
+  }
+
+  switchFloor(floorNumber) {
+    this.currentFloor = floorNumber;
+    sound.playCounterDing();
+
+    if (floorNumber === 1) {
+      // Ground Level: Lobby Fountain, Shoes & Fashion
+      this.playerGroup.position.set(0, 0, -11.5);
+      this.scene.background = new THREE.Color(0x0f172a);
+      if (this.scene.fog) this.scene.fog.color.setHex(0x0f172a);
+    } else if (floorNumber === 2) {
+      // Upper Mezzanine: Tech & Groceries
+      this.playerGroup.position.set(13, 0, -13.5);
+      this.scene.background = new THREE.Color(0x0b132b);
+      if (this.scene.fog) this.scene.fog.color.setHex(0x0b132b);
+    } else if (floorNumber === 3) {
+      // Sky Rooftop Plaza: Food Court & City Skyline
+      this.playerGroup.position.set(13, 0, 13.5);
+      this.scene.background = new THREE.Color(0x1e112a);
+      if (this.scene.fog) this.scene.fog.color.setHex(0x1e112a);
+    }
+    this.clickTarget = null;
   }
 
   teleportToRoom(roomKey) {

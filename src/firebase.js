@@ -100,6 +100,16 @@ export async function getStoresByDistrict(districtId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+/** Register a new merchant vendor store in Firestore */
+export async function addStore(store) {
+  const storeDoc = {
+    ...store,
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(doc(db, "stores", store.id), storeDoc, { merge: true });
+  return storeDoc;
+}
+
 // ============================================================
 //  PRODUCTS
 // ============================================================

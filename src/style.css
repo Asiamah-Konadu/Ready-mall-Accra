@@ -2429,3 +2429,176 @@ body, html {
   color: #94a3b8;
 }
 
+/* ============================================================
+   SELL ON READY MALL BUTTON (HUD)
+   ============================================================ */
+.vendor-register-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0f172a;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.vendor-register-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.55);
+  filter: brightness(1.1);
+}
+
+.vendor-register-btn:active {
+  transform: translateY(0);
+}
+
+.vr-btn-icon {
+  font-size: 1rem;
+  animation: pulseRotate 3s ease-in-out infinite;
+}
+
+@keyframes pulseRotate {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.2) rotate(15deg); }
+}
+
+@media (max-width: 768px) {
+  .vr-btn-text { display: none; }
+  .vendor-register-btn { padding: 8px 12px; }
+}
+
+/* ============================================================
+   GRAND SKY ELEVATOR MODAL
+   ============================================================ */
+.elevator-card {
+  max-width: 480px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(245, 158, 11, 0.2);
+}
+
+.elevator-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.elevator-icon-glow {
+  font-size: 3rem;
+  margin-bottom: 6px;
+  display: inline-block;
+  filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.5));
+}
+
+.elevator-floors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.elevator-floor-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.22s ease;
+  width: 100%;
+}
+
+.elevator-floor-btn:hover {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  transform: translateX(4px);
+}
+
+.elevator-floor-btn.active {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25);
+}
+
+.floor-num-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f172a;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.floor-info {
+  flex: 1;
+}
+
+.floor-name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 3px;
+}
+
+.floor-desc {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.floor-arrow {
+  color: #f59e0b;
+  font-size: 1.2rem;
+  font-weight: 800;
+  transition: transform 0.2s ease;
+}
+
+.elevator-floor-btn:hover .floor-arrow {
+  transform: translateX(4px);
+}
+
+/* ============================================================
+   SELF-SERVE VENDOR ONBOARDING MODAL
+   ============================================================ */
+.vendor-onboarding-card {
+  max-width: 540px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(245, 158, 11, 0.18);
+}
+
+.onboarding-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.onboarding-badge-icon {
+  font-size: 3rem;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.5));
+}
+
+.action-elevator {
+  background: linear-gradient(135deg, #f59e0b, #eab308) !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.7) !important;
+}
+

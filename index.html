@@ -71,6 +71,10 @@
             <button class="icon-btn" id="sound-btn" title="Toggle Sound">🔊</button>
             <button class="icon-btn" id="wardrobe-btn" title="Character Wardrobe">👕</button>
             <button class="icon-btn" id="orders-btn" title="My Orders">📦 <span id="orders-badge" class="orders-badge hidden">0</span></button>
+            <button class="vendor-register-btn" id="vendor-register-btn" title="Open Your Store">
+              <span class="vr-btn-icon">✨</span>
+              <span class="vr-btn-text">Sell on Ready Mall</span>
+            </button>
             <button class="merchant-toggle-btn" id="merchant-btn" title="Merchant Portal">
               <span class="merchant-btn-icon">🏬</span>
               <span class="merchant-btn-text">Merchant Portal</span>
@@ -565,6 +569,123 @@
         <div id="np-success-msg" class="np-success hidden">
           ✅ Product published! It's now live in your stall catalog.
         </div>
+      </div>
+    </div>
+
+    <!-- Grand Panoramic Sky Elevator Modal -->
+    <div class="modal-backdrop" id="elevator-modal">
+      <div class="modal-card elevator-card">
+        <button class="modal-close-btn" id="elevator-close-btn">✕</button>
+        <div class="elevator-header">
+          <div class="elevator-icon-glow">🛗</div>
+          <h2 class="modal-title">Grand Sky Elevator</h2>
+          <div class="modal-subtitle">Ready Mall Accra • Select Destination Floor</div>
+        </div>
+        <div class="elevator-floors-list" id="elevator-floors-list">
+          <button class="elevator-floor-btn active" data-floor="1">
+            <div class="floor-num-badge">1</div>
+            <div class="floor-info">
+              <div class="floor-name">Ground Level: Grand Plaza & Luxury</div>
+              <div class="floor-desc">👟 Shoes & Sneakers • 👗 Bonwire Kente & Streetwear • 💳 Cashier</div>
+            </div>
+            <span class="floor-arrow">➜</span>
+          </button>
+          <button class="elevator-floor-btn" data-floor="2">
+            <div class="floor-num-badge">2</div>
+            <div class="floor-info">
+              <div class="floor-name">Floor 2: Mezzanine Tech & Bazaar</div>
+              <div class="floor-desc">📱 Tech & Gadget Alley • 🛒 Groceries & Makola Bazaar</div>
+            </div>
+            <span class="floor-arrow">➜</span>
+          </button>
+          <button class="elevator-floor-btn" data-floor="3">
+            <div class="floor-num-badge">3</div>
+            <div class="floor-info">
+              <div class="floor-name">Floor 3: Sky Rooftop & Food Court</div>
+              <div class="floor-desc">🍔 Smoky Jollof & Chop Bars • ☕ Starbites Cafe • 🌇 City Views</div>
+            </div>
+            <span class="floor-arrow">➜</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Self-Serve Vendor Onboarding Modal -->
+    <div class="modal-backdrop" id="vendor-register-modal">
+      <div class="modal-card vendor-onboarding-card">
+        <button class="modal-close-btn" id="vr-close-btn">✕</button>
+        <div class="onboarding-header">
+          <div class="onboarding-badge-icon">🏬</div>
+          <h2 class="modal-title">Open Your Store in Ready Mall</h2>
+          <p class="modal-subtitle">Join Ghanaian merchants selling in 3D. Your stall goes live instantly!</p>
+        </div>
+        <form id="vendor-register-form" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label">Store / Brand Name *</label>
+            <input type="text" class="form-input" id="vr-name" placeholder="e.g. Adum Gold & Ashanti Beads" required />
+          </div>
+          <div style="display:flex;gap:10px;">
+            <div class="form-group" style="flex:1;">
+              <label class="form-label">Category / District *</label>
+              <select class="form-input" id="vr-district" required>
+                <option value="shoes">👟 Shoe & Footwear District</option>
+                <option value="tech">📱 Tech & Electronics Alley</option>
+                <option value="groceries">🛒 Groceries & Market Bazaar</option>
+                <option value="food">🍔 Food Court & Dining</option>
+                <option value="fashion">👗 Fashion, Beauty & Lifestyle</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label class="form-label">Store Emoji Icon</label>
+              <select class="form-input" id="vr-icon">
+                <option value="👟">👟 Sneakers & Shoes</option>
+                <option value="👠">👠 Luxury Heels</option>
+                <option value="📱">📱 Tech & Phones</option>
+                <option value="💻">💻 PCs & Gadgets</option>
+                <option value="🛒">🛒 Groceries & Mart</option>
+                <option value="🌶️">🌶️ Spices & Shito</option>
+                <option value="🍔">🍔 Food & Jollof</option>
+                <option value="🍲">🍲 Local Chop House</option>
+                <option value="☕">☕ Cafe & Sobolo</option>
+                <option value="👑">👑 Royal Kente</option>
+                <option value="👕">👕 Streetwear</option>
+                <option value="✨">✨ Shea Butter & Glow</option>
+                <option value="🧴">🧴 Arabian Oud & Scents</option>
+                <option value="💍">💍 Gold & Jewelry</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Store Tagline / Catchphrase *</label>
+            <input type="text" class="form-input" id="vr-tagline" placeholder="e.g. Handmade Ashanti brass beads & recycled glass necklaces" required />
+          </div>
+          <div style="display:flex;gap:10px;">
+            <div class="form-group" style="flex:1;">
+              <label class="form-label">Merchant Full Name *</label>
+              <input type="text" class="form-input" id="vr-owner" placeholder="e.g. Kofi Antwi" required />
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label class="form-label">Ghana MoMo / WhatsApp *</label>
+              <input type="tel" class="form-input" id="vr-phone" placeholder="e.g. 0244123456" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Stall Canopy Branding Color</label>
+            <div class="color-picker-row" id="vr-color-row">
+              <div class="color-swatch active" data-color="#f59e0b" style="background:#f59e0b;"></div>
+              <div class="color-swatch" data-color="#ef4444" style="background:#ef4444;"></div>
+              <div class="color-swatch" data-color="#3b82f6" style="background:#3b82f6;"></div>
+              <div class="color-swatch" data-color="#10b981" style="background:#10b981;"></div>
+              <div class="color-swatch" data-color="#ec4899" style="background:#ec4899;"></div>
+              <div class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6;"></div>
+              <div class="color-swatch" data-color="#06b6d4" style="background:#06b6d4;"></div>
+              <div class="color-swatch" data-color="#eab308" style="background:#eab308;"></div>
+            </div>
+          </div>
+          <button class="btn-primary-action" id="vr-submit-btn" style="margin-top:14px;">
+            <span>🚀</span> Launch My 3D Store in Ready Mall
+          </button>
+        </form>
       </div>
     </div>
 

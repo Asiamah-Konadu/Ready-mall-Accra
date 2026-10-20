@@ -48,6 +48,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     // On Open Mall Exit Door Confirmation Prompt
     () => {
       if (ui) ui.openExitPrompt();
+    },
+    // On Open Grand Glass Elevator Floor Selector
+    () => {
+      if (ui) ui.openElevatorModal();
     }
   );
 

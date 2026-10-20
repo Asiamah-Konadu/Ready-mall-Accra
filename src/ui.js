@@ -4,6 +4,7 @@ import {
   placeOrder,
   updateProductStock,
   addProduct,
+  addStore,
   subscribeToOrders,
   updateOrderStatus
 } from './firebase.js';
@@ -38,6 +39,7 @@ export class MallUI {
 
     // Product uploader color
     this.selectedProductColor = '#f59e0b';
+    this.selectedVendorColor = '#f59e0b';
 
     // Placed orders tracker
     this.myOrders = []; // customer-side orders with stepper state
@@ -179,6 +181,15 @@ export class MallUI {
     this.ordersTrackerList = document.getElementById('orders-tracker-list');
     this.ordersEmptyState = document.getElementById('orders-empty-state');
 
+    // Elevator & Vendor Onboarding Modals
+    this.elevatorModal = document.getElementById('elevator-modal');
+    this.elevatorCloseBtn = document.getElementById('elevator-close-btn');
+    this.elevatorFloorsList = document.getElementById('elevator-floors-list');
+    this.vendorRegisterBtn = document.getElementById('vendor-register-btn');
+    this.vendorRegisterModal = document.getElementById('vendor-register-modal');
+    this.vrCloseBtn = document.getElementById('vr-close-btn');
+    this.vrSubmitBtn = document.getElementById('vr-submit-btn');
+
     // Search
     this.hudSearchInput = document.getElementById('hud-search-input');
     this.searchResultsDropdown = document.getElementById('search-results-dropdown');
@@ -239,6 +250,34 @@ export class MallUI {
     this.cancelExitBtn.addEventListener('click', () => this.closeModals());
     this.confirmExitBtn.addEventListener('click', () => this.confirmExitGame());
     this.reenterMallBtn.addEventListener('click', () => this.reenterMall());
+
+    // Elevator & Vendor Onboarding events
+    if (this.elevatorCloseBtn) this.elevatorCloseBtn.addEventListener('click', () => this.closeModals());
+    if (this.vendorRegisterBtn) this.vendorRegisterBtn.addEventListener('click', () => this.openVendorRegisterModal());
+    if (this.vrCloseBtn) this.vrCloseBtn.addEventListener('click', () => this.closeModals());
+    if (this.vrSubmitBtn) this.vrSubmitBtn.addEventListener('click', () => this.handleVendorRegistration());
+
+    if (this.elevatorFloorsList) {
+      this.elevatorFloorsList.querySelectorAll('.elevator-floor-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const floor = parseInt(btn.dataset.floor, 10);
+          this.closeModals();
+          this.game.switchFloor(floor);
+        });
+      });
+    }
+
+    // Vendor Onboarding color swatches
+    const vrColorRow = document.getElementById('vr-color-row');
+    if (vrColorRow) {
+      vrColorRow.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', () => {
+          vrColorRow.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+          swatch.classList.add('active');
+          this.selectedVendorColor = swatch.dataset.color || '#f59e0b';
+        });
+      });
+    }
 
     // Add to Stack button
     this.modalAddStackBtn.addEventListener('click', () => {
@@ -404,7 +443,7 @@ export class MallUI {
 
     if (this.mobileActionBtn) {
       this.mobileActionBtn.classList.add('active-trigger');
-      this.mobileActionBtn.classList.remove('action-stall', 'action-checkout', 'action-product', 'action-exit');
+      this.mobileActionBtn.classList.remove('action-stall', 'action-checkout', 'action-product', 'action-exit', 'action-elevator');
     }
 
     if (trigger.type === 'exit_door') {
@@ -414,6 +453,14 @@ export class MallUI {
         this.mobileActionBtn.classList.add('action-exit');
         if (this.mobileActionIcon) this.mobileActionIcon.textContent = '🚪';
         if (this.mobileActionLabel) this.mobileActionLabel.textContent = 'EXIT';
+      }
+    } else if (trigger.type === 'elevator') {
+      this.promptMainText.textContent = `🛗 Grand Sky Elevator`;
+      this.promptSubText.textContent = `Ride between Ground Floor, Upper Mezzanine & Sky Rooftop`;
+      if (this.mobileActionBtn) {
+        this.mobileActionBtn.classList.add('action-elevator');
+        if (this.mobileActionIcon) this.mobileActionIcon.textContent = '🛗';
+        if (this.mobileActionLabel) this.mobileActionLabel.textContent = 'RIDE';
       }
     } else if (trigger.type === 'stall_catalog') {
       const s = trigger.store;
@@ -789,6 +836,102 @@ export class MallUI {
     if (this.wardrobeModal) this.wardrobeModal.classList.remove('active');
     if (this.ordersModal) this.ordersModal.classList.remove('active');
     if (this.addProductModal) this.addProductModal.classList.remove('active');
+    if (this.elevatorModal) this.elevatorModal.classList.remove('active');
+    if (this.vendorRegisterModal) this.vendorRegisterModal.classList.remove('active');
+  }
+
+  openElevatorModal() {
+    this.closeModals();
+    if (this.elevatorModal) {
+      this.elevatorModal.classList.add('active');
+      const currentFloor = this.game.currentFloor || 1;
+      this.elevatorModal.querySelectorAll('.elevator-floor-btn').forEach(btn => {
+        const f = parseInt(btn.dataset.floor, 10);
+        btn.classList.toggle('active', f === currentFloor);
+      });
+    }
+  }
+
+  openVendorRegisterModal() {
+    this.closeModals();
+    if (this.vendorRegisterModal) {
+      this.vendorRegisterModal.classList.add('active');
+    }
+  }
+
+  handleVendorRegistration() {
+    const name = (document.getElementById('vr-name')?.value || '').trim();
+    const district = document.getElementById('vr-district')?.value || 'shoes';
+    const icon = document.getElementById('vr-icon')?.value || '🏬';
+    const tagline = (document.getElementById('vr-tagline')?.value || '').trim();
+    const owner = (document.getElementById('vr-owner')?.value || '').trim();
+    const phone = (document.getElementById('vr-phone')?.value || '').trim();
+
+    if (!name || !tagline || !owner || !phone) {
+      alert("Please fill in all store fields to launch your stall.");
+      return;
+    }
+
+    const zoneCount = this.stores.filter(s => s.zone === district).length;
+    const stallPrefix = district.charAt(0).toUpperCase();
+    const stallNumber = `Stall ${stallPrefix}${zoneCount + 1}`;
+    const storeId = `store-${district}-${Date.now().toString().slice(-4)}`;
+
+    const newStore = {
+      id: storeId,
+      name,
+      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      districtId: `district-${district}`,
+      zone: district,
+      stallNumber,
+      category: district,
+      themeColor: parseInt(this.selectedVendorColor.replace('#', ''), 16),
+      hexColor: this.selectedVendorColor,
+      owner,
+      whatsapp: phone,
+      icon,
+      tagline
+    };
+
+    // 1. Add to local active stores array
+    this.stores.push(newStore);
+
+    // 2. Persist to Firestore Cloud Database
+    addStore(newStore).catch(err => {
+      console.warn("Could not save store to Firestore:", err);
+    });
+
+    // 3. Dynamically spawn 3D stall in the game world!
+    const slot = this.game.addStoreStall(newStore, zoneCount);
+
+    // 4. Update UI merchant tabs & dropdown
+    this.selectedStoreId = newStore.id;
+    this.renderMerchantTabs();
+
+    // 5. Close modal & celebrate with SFX & confetti
+    this.closeModals();
+    sound.playCashRegister();
+    sound.playFanfare();
+    confetti({ particleCount: 160, spread: 85, origin: { y: 0.55 } });
+
+    // 6. Offer immediate teleport to their new stall
+    setTimeout(() => {
+      const wantToVisit = confirm(`🎉 Congratulations!\n\nYour store "${name}" (${stallNumber}) is now live in Ready Mall Accra!\n\nWould you like to teleport directly to your new stall now?`);
+      if (wantToVisit && slot) {
+        this.game.playerGroup.position.set(slot.x, 0, slot.z + (slot.rot === 0 ? 3.5 : -3.5));
+        sound.playPickup();
+      }
+    }, 400);
+
+    // Reset form fields
+    const nameInput = document.getElementById('vr-name');
+    const taglineInput = document.getElementById('vr-tagline');
+    const ownerInput = document.getElementById('vr-owner');
+    const phoneInput = document.getElementById('vr-phone');
+    if (nameInput) nameInput.value = '';
+    if (taglineInput) taglineInput.value = '';
+    if (ownerInput) ownerInput.value = '';
+    if (phoneInput) phoneInput.value = '';
   }
 
   openExitPrompt() {
