@@ -715,6 +715,14 @@ export class MallUI {
       });
       this.merchantStoreTabs.appendChild(chip);
     });
+
+    // Populate Add Product stall select dropdown with all 20 stores
+    const npStallSelect = document.getElementById('np-stall');
+    if (npStallSelect && npStallSelect.children.length !== this.stores.length) {
+      npStallSelect.innerHTML = this.stores.map(s => 
+        `<option value="${s.id}">${s.icon} ${s.name} (${s.stallNumber})</option>`
+      ).join('');
+    }
   }
 
   renderMerchantOrders() {

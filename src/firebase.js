@@ -294,9 +294,9 @@ export async function loadMallData(onProgress) {
     });
     let orders    = ordersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-    // If Firestore database is empty (first boot), seed it automatically
-    if (stores.length === 0 || products.length === 0) {
-      if (onProgress) onProgress("Initializing database with Accra Mall stores...", 80);
+    // If Firestore database has fewer than 20 stores, sync all 20 real vendors & products!
+    if (stores.length < 20 || products.length < 20) {
+      if (onProgress) onProgress("Syncing 20 real Accra vendors to Cloud Database...", 80);
       const seeded = await seedFirestore();
       if (onProgress) onProgress("Ready Mall Accra ready!", 100);
       return seeded;
