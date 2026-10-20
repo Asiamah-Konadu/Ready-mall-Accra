@@ -1,13 +1,20 @@
 import confetti from 'canvas-confetti';
-import { PRODUCTS, STORES, INITIAL_ORDERS } from './data.js';
 import { sound } from './sound.js';
+import {
+  placeOrder,
+  updateProductStock,
+  addProduct,
+  subscribeToOrders,
+  updateOrderStatus
+} from './firebase.js';
 
 export class MallUI {
-  constructor(game) {
+  constructor(game, stores = [], products = [], orders = []) {
     this.game = game;
-    this.cart = [];
-    this.orders = [...INITIAL_ORDERS];
-    this.selectedStoreId = STORES[0].id;
+    this.stores = stores;
+    this.products = products;
+    this.orders = [...orders];
+    this.selectedStoreId = this.stores[0]?.id || 'store-shoes-1';
     this.selectedVariant = null;
     this.currentInspectingProduct = null;
     this.selectedNetwork = 'MTN MoMo';
@@ -38,6 +45,18 @@ export class MallUI {
     this.cacheElements();
     this.bindEvents();
     this.initJoystick();
+
+    // Subscribe to live Firestore orders updates
+    try {
+      this.unsubOrders = subscribeToOrders((liveOrders) => {
+        if (liveOrders && liveOrders.length > 0) {
+          this.orders = liveOrders;
+          this.renderMerchantOrders();
+        }
+      });
+    } catch (e) {
+      console.warn("Real-time orders subscription not available:", e);
+    }
     this.initMinimap();
     this.initRadio();
     this.initSearch();
@@ -407,7 +426,7 @@ export class MallUI {
       }
     } else if (trigger.type === 'product') {
       const p = trigger.product;
-      const store = STORES.find(s => s.id === p.storeId);
+      const store = this.stores.find(s => s.id === p.storeId);
       const stallLabel = store ? `${store.name} (${store.stallNumber})` : 'Mall Stall';
       this.promptMainText.textContent = `Inspect ${p.name}`;
       this.promptSubText.textContent = `${stallLabel} • GHS ${p.price.toFixed(2)} • Tap to inspect & stack`;
@@ -432,7 +451,7 @@ export class MallUI {
 
   openProductModal(product) {
     this.currentInspectingProduct = product;
-    const store = STORES.find(s => s.id === product.storeId) || STORES[0];
+    const store = this.stores.find(s => s.id === product.storeId) || this.stores[0];
 
     this.modalProdImg.src = product.image;
     this.modalStoreIcon.textContent = store.icon;
@@ -525,7 +544,7 @@ export class MallUI {
     this.paystackTriggerBtn.style.opacity = '1';
 
     this.cart.forEach(item => {
-      const store = STORES.find(s => s.id === item.storeId) || { name: 'Mall Merchant', stallNumber: '' };
+      const store = this.stores.find(s => s.id === item.storeId) || { name: 'Mall Merchant', stallNumber: '' };
       const el = document.createElement('div');
       el.className = 'cart-item';
       el.innerHTML = `
@@ -571,7 +590,7 @@ export class MallUI {
   completeMoMoPayment() {
     const total = this.cart.reduce((sum, item) => sum + item.price, 0);
     const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
-    const store = STORES.find(s => s.id === this.cart[0].storeId) || STORES[0];
+    const store = this.stores.find(s => s.id === this.cart[0].storeId) || this.stores[0];
 
     // Create order record (merchant view)
     const newOrder = {
@@ -592,6 +611,11 @@ export class MallUI {
 
     this.orders.unshift(newOrder);
 
+    // Save order to Firestore Database
+    placeOrder(newOrder).catch(err => {
+      console.warn("Could not persist order to Firestore:", err);
+    });
+
     // Create customer order tracker entry
     const trackerOrder = {
       id: orderId,
@@ -610,10 +634,13 @@ export class MallUI {
     const coinsEarned = Math.floor(total / 10);
     this.readyCoins += coinsEarned;
 
-    // Decrement stock in data
+    // Decrement stock in data & Firestore Database
     this.cart.forEach(cartItem => {
-      const prod = PRODUCTS.find(p => p.id === cartItem.id);
-      if (prod && prod.stock > 0) prod.stock--;
+      const prod = this.products.find(p => p.id === cartItem.id);
+      if (prod && prod.stock > 0) {
+        prod.stock--;
+        updateProductStock(prod.id, prod.stock);
+      }
     });
 
     // Clear cart and game stack
@@ -677,7 +704,7 @@ export class MallUI {
 
   renderMerchantTabs() {
     this.merchantStoreTabs.innerHTML = '';
-    STORES.forEach(store => {
+    this.stores.forEach(store => {
       const chip = document.createElement('div');
       chip.className = `variant-chip ${store.id === this.selectedStoreId ? 'active' : ''}`;
       chip.textContent = `${store.icon} ${store.name} (${store.stallNumber})`;
@@ -804,7 +831,7 @@ export class MallUI {
     }
 
     // Find all products for this stall
-    const stallProducts = PRODUCTS.filter(p => p.storeId === store.id);
+    const stallProducts = this.products.filter(p => p.storeId === store.id);
     this.catalogProductsCount.textContent = `${stallProducts.length} Product${stallProducts.length === 1 ? '' : 's'}`;
 
     this.catalogProductsGrid.innerHTML = '';
@@ -1173,19 +1200,19 @@ export class MallUI {
     const results = [];
 
     // Search products
-    PRODUCTS.forEach(p => {
+    this.products.forEach(p => {
       if (
         p.name.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
         (p.variants || []).some(v => v.toLowerCase().includes(q))
       ) {
-        const store = STORES.find(s => s.id === p.storeId);
+        const store = this.stores.find(s => s.id === p.storeId);
         results.push({ type: 'product', item: p, store });
       }
     });
 
     // Search stores
-    STORES.forEach(s => {
+    this.stores.forEach(s => {
       if (s.name.toLowerCase().includes(q) || (s.tagline || '').toLowerCase().includes(q)) {
         results.push({ type: 'store', item: s });
       }
@@ -1233,7 +1260,7 @@ export class MallUI {
 
         if (storeId) {
           // Find which room zone this store belongs to
-          const store = STORES.find(s => s.id === storeId);
+          const store = this.stores.find(s => s.id === storeId);
           if (store && store.zone) this.game.teleportToRoom(store.zone);
         } else if (room) {
           this.game.teleportToRoom(room);
@@ -1483,8 +1510,13 @@ export class MallUI {
       image: 'https://via.placeholder.com/120x80/1e293b/f59e0b?text=' + encodeURIComponent(name.slice(0, 12))
     };
 
-    // Add to PRODUCTS array
-    PRODUCTS.push(newProduct);
+    // Add to products array
+    this.products.push(newProduct);
+
+    // Persist new product to Firestore Database
+    addProduct(newProduct).catch(err => {
+      console.warn("Could not save product to Firestore:", err);
+    });
 
     // Show success
     if (this.npSuccessMsg) this.npSuccessMsg.classList.remove('hidden');

@@ -1,13 +1,14 @@
 import * as THREE from 'three';
-import { PRODUCTS, STORES } from './data.js';
 import { sound } from './sound.js';
 
 // Detect mobile / low-power device
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 export class MallGame {
-  constructor(canvasContainer, onProximityChange, onOpenProduct, onOpenCheckout, onOpenStallCatalog, onOpenExitPrompt) {
+  constructor(canvasContainer, stores = [], products = [], onProximityChange, onOpenProduct, onOpenCheckout, onOpenStallCatalog, onOpenExitPrompt) {
     this.container = canvasContainer;
+    this.stores = stores;
+    this.products = products;
     this.onProximityChange = onProximityChange;
     this.onOpenProduct = onOpenProduct;
     this.onOpenCheckout = onOpenCheckout;
@@ -996,7 +997,7 @@ export class MallGame {
     const stallConfigs = [
       // === SHOE & FOOTWEAR DISTRICT (4 SQUARE STALLS) ===
       {
-        store: STORES.find(s => s.id === "store-shoes-1"), // Kwame's Kicks (Stall S1)
+        store: this.stores.find(s => s.id === "store-shoes-1") || this.stores[0], // Kwame's Kicks (Stall S1)
         x: -18,
         z: -19,
         w: 6.8,
@@ -1010,7 +1011,7 @@ export class MallGame {
         ]
       },
       {
-        store: STORES.find(s => s.id === "store-shoes-2"), // Abena Luxury (Stall S2)
+        store: this.stores.find(s => s.id === "store-shoes-2") || this.stores[1], // Abena Luxury (Stall S2)
         x: -8,
         z: -19,
         w: 6.8,
@@ -1024,7 +1025,7 @@ export class MallGame {
         ]
       },
       {
-        store: STORES.find(s => s.id === "store-shoes-3"), // Osu Retro Kicks (Stall S3)
+        store: this.stores.find(s => s.id === "store-shoes-3") || this.stores[2], // Osu Retro Kicks (Stall S3)
         x: -18,
         z: -8,
         w: 6.8,
@@ -1038,7 +1039,7 @@ export class MallGame {
         ]
       },
       {
-        store: STORES.find(s => s.id === "store-shoes-4"), // Slide City & Care (Stall S4)
+        store: this.stores.find(s => s.id === "store-shoes-4") || this.stores[3], // Slide City & Care (Stall S4)
         x: -8,
         z: -8,
         w: 6.8,
@@ -1054,7 +1055,7 @@ export class MallGame {
 
       // === TECH ALLEY STALLS ===
       {
-        store: STORES.find(s => s.id === "store-tech-1"), // Kojo Tech Hub (Stall E1)
+        store: this.stores.find(s => s.id === "store-tech-1") || this.stores[4], // Kojo Tech Hub (Stall E1)
         x: 10,
         z: -15,
         w: 6.8,
@@ -1067,7 +1068,7 @@ export class MallGame {
         ]
       },
       {
-        store: STORES.find(s => s.id === "store-tech-2"), // Accra Gadget World (Stall E2)
+        store: this.stores.find(s => s.id === "store-tech-2") || this.stores[5], // Accra Gadget World (Stall E2)
         x: 20,
         z: -15,
         w: 6.8,
@@ -1082,7 +1083,7 @@ export class MallGame {
 
       // === GROCERIES BAZAAR STALL ===
       {
-        store: STORES.find(s => s.id === "store-groc-1"), // Osu Fresh Mart (Stall G1)
+        store: this.stores.find(s => s.id === "store-groc-1") || this.stores[6], // Osu Fresh Mart (Stall G1)
         x: -15,
         z: 13,
         w: 7.2,
@@ -1097,7 +1098,7 @@ export class MallGame {
 
       // === FOOD COURT STALL ===
       {
-        store: STORES.find(s => s.id === "store-food-1"), // Chorkor Chop Bar (Stall F1)
+        store: this.stores.find(s => s.id === "store-food-1") || this.stores[7], // Chorkor Chop Bar (Stall F1)
         x: 15,
         z: 13,
         w: 7.2,
@@ -1381,7 +1382,7 @@ export class MallGame {
 
     // 8. Place Shelves / Display Podiums inside the Stall
     shelves.forEach(sh => {
-      const prod = PRODUCTS.find(p => p.id === sh.prodId);
+      const prod = this.products.find(p => p.id === sh.prodId);
       if (!prod) return;
 
       // Compute world position for the shelf based on stall position & rotation

@@ -2322,3 +2322,110 @@ body, html {
   .modal-card { max-height: 92vh !important; }
   .stall-products-grid { max-height: 55vh !important; grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+/* ============================================================
+   FAST DATABASE LOADER SCREEN
+   ============================================================ */
+.mall-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(circle at center, #0f172a 0%, #030712 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+.mall-loader.loader-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-card {
+  text-align: center;
+  padding: 36px 32px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(245, 158, 11, 0.15);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  width: min(90vw, 420px);
+}
+
+.loader-mall-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+  animation: bounceSlow 2s ease-in-out infinite;
+}
+
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.loader-brand {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #fff;
+}
+
+.loader-brand span {
+  color: #f59e0b;
+}
+
+.loader-tagline {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 4px;
+  margin-bottom: 24px;
+}
+
+.loader-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.loader-bar-fill {
+  width: 15%;
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #10b981);
+  border-radius: 999px;
+  transition: width 0.35s ease;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+}
+
+.loader-status {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  font-weight: 500;
+  min-height: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.loader-badges {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.loader-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
