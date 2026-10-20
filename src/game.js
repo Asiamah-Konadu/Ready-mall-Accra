@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { PRODUCTS, STORES } from './data.js';
 import { sound } from './sound.js';
 
+// Detect mobile / low-power device
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+
 export class MallGame {
   constructor(canvasContainer, onProximityChange, onOpenProduct, onOpenCheckout, onOpenStallCatalog, onOpenExitPrompt) {
     this.container = canvasContainer;
@@ -48,14 +51,31 @@ export class MallGame {
   }
 
   initRenderer() {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // Use lower quality antialias on mobile to save GPU
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: !IS_MOBILE,
+      alpha: false,
+      powerPreference: 'high-performance',
+      stencil: false,
+    });
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Cap pixel ratio: 1.5 on mobile (saves ~44% fill-rate), 2 on desktop
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = IS_MOBILE ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     this.container.appendChild(this.renderer.domElement);
+
+    // Responsive resize handler
+    this._onResize = () => {
+      const w = this.container.clientWidth;
+      const h = this.container.clientHeight;
+      this.renderer.setSize(w, h);
+      this.camera.aspect = w / h;
+      this.camera.updateProjectionMatrix();
+    };
+    window.addEventListener('resize', this._onResize);
   }
 
   initCamera() {
@@ -82,11 +102,15 @@ export class MallGame {
     const dirLight = new THREE.DirectionalLight(0xffedd5, 1.35);
     dirLight.position.set(35, 55, 40);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
+    // Halve shadow map on mobile: 1024 vs 2048 — saves 75% shadow memory
+    const shadowRes = IS_MOBILE ? 1024 : 2048;
+    dirLight.shadow.mapSize.width = shadowRes;
+    dirLight.shadow.mapSize.height = shadowRes;
     dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 180;
-    const d = 55;
+    // Tighter shadow frustum on mobile — only covers playable area
+    const shadowFar = IS_MOBILE ? 80 : 180;
+    dirLight.shadow.camera.far = shadowFar;
+    const d = IS_MOBILE ? 35 : 55;
     dirLight.shadow.camera.left = -d;
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
@@ -98,24 +122,29 @@ export class MallGame {
     const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x164e28, 0.45);
     this.scene.add(hemiLight);
 
-    // Dedicated Shoe District Skylight
-    const shoePlazaLight = new THREE.PointLight(0xf43f5e, 1.8, 32);
-    shoePlazaLight.position.set(-13, 8, -13);
-    this.scene.add(shoePlazaLight);
+    // District accent lights — skip on mobile to save draw calls
+    if (!IS_MOBILE) {
+      const shoePlazaLight = new THREE.PointLight(0xf43f5e, 1.8, 32);
+      shoePlazaLight.position.set(-13, 8, -13);
+      this.scene.add(shoePlazaLight);
 
-    // Tech District Skylight
-    const techLight = new THREE.PointLight(0x38bdf8, 1.8, 32);
-    techLight.position.set(15, 8, -13);
-    this.scene.add(techLight);
+      const techLight = new THREE.PointLight(0x38bdf8, 1.8, 32);
+      techLight.position.set(15, 8, -13);
+      this.scene.add(techLight);
 
-    // Food & Market Skylights
-    const foodLight = new THREE.PointLight(0xf59e0b, 1.6, 26);
-    foodLight.position.set(15, 8, 12);
-    this.scene.add(foodLight);
+      const foodLight = new THREE.PointLight(0xf59e0b, 1.6, 26);
+      foodLight.position.set(15, 8, 12);
+      this.scene.add(foodLight);
 
-    const grocLight = new THREE.PointLight(0x10b981, 1.6, 26);
-    grocLight.position.set(-15, 8, 12);
-    this.scene.add(grocLight);
+      const grocLight = new THREE.PointLight(0x10b981, 1.6, 26);
+      grocLight.position.set(-15, 8, 12);
+      this.scene.add(grocLight);
+    } else {
+      // Single warm fill light on mobile instead of 4 point lights
+      const fillLight = new THREE.PointLight(0xffd580, 1.2, 60);
+      fillLight.position.set(0, 10, 0);
+      this.scene.add(fillLight);
+    }
   }
 
   buildMallEnvironment() {
@@ -373,8 +402,9 @@ export class MallGame {
 
   // BUILD SURROUNDINGS: CITY SKYLINE, ROADS, PALMS & BILLBOARDS
   buildSurroundings() {
-    // 1. Vast Terrain Ground (Rich green tropical lawns)
-    const terrainGeo = new THREE.PlaneGeometry(280, 280);
+    // 1. Vast Terrain Ground — smaller on mobile to reduce vertex count
+    const terrainSize = IS_MOBILE ? 160 : 280;
+    const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize);
     const terrainMat = new THREE.MeshStandardMaterial({
       color: 0x143820,
       roughness: 0.9,
@@ -388,7 +418,7 @@ export class MallGame {
 
     // 2. Perimeter Asphalt Highways & Ring Roads
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 }); // Gold road markings
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
 
     const createRoad = (x, z, w, d, isHorizontal) => {
       const road = new THREE.Mesh(new THREE.PlaneGeometry(w, d), roadMat);
@@ -397,7 +427,8 @@ export class MallGame {
       road.receiveShadow = true;
       this.scene.add(road);
 
-      // Road dashed centerlines
+      // Skip road stripes on mobile — saves many draw calls
+      if (IS_MOBILE) return;
       const stripeCount = Math.floor((isHorizontal ? w : d) / 6);
       for (let i = 0; i < stripeCount; i++) {
         const stripe = new THREE.Mesh(
@@ -415,31 +446,17 @@ export class MallGame {
       }
     };
 
-    // North Highway
     createRoad(0, -38, 160, 14, true);
-    // South Boulevard
     createRoad(0, 36, 160, 14, true);
-    // West Avenue
     createRoad(-42, -1, 14, 130, false);
-    // East Avenue
     createRoad(42, -1, 14, 130, false);
 
-    // 3. Outdoor Parking Lot & Vehicles (South-West outdoor zone)
+    // 3–8: Surroundings — reduced/skipped on mobile
     this.buildParkingLotAndVehicles();
-
-    // 4. Grand Arrival Plaza & Flagpoles (South entrance)
     this.buildEntrancePlaza();
-
-    // 5. Accra Skyline High-Rises & Modern Office Towers (35+ Buildings)
     this.buildCitySkyline();
-
-    // 6. Large Roadside Billboards
     this.buildRoadsideBillboards();
-
-    // 7. Lush Tropical Palm Trees & Trees
     this.buildTropicalVegetation();
-
-    // 8. Outdoor Street Lamps
     this.buildStreetLamps();
   }
 
@@ -464,54 +481,50 @@ export class MallGame {
       });
       const tower = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), towerMat);
       tower.position.set(x, h / 2, z);
-      tower.castShadow = true;
-      tower.receiveShadow = true;
+      // Distant buildings don't need to cast/receive shadows — big perf win
+      tower.castShadow = false;
+      tower.receiveShadow = false;
       buildingGroup.add(tower);
 
-      // Glowing window stripes / grid panels
-      const winMat = new THREE.MeshStandardMaterial({
-        color: pal.win,
-        emissive: pal.win,
-        emissiveIntensity: 0.6,
-        roughness: 0.1
-      });
-
-      // Front & Back illuminated window bands
-      const floors = Math.floor(h / 3);
-      for (let f = 1; f < floors; f++) {
-        if (f % 2 === 0) {
-          const winBandF = new THREE.Mesh(new THREE.BoxGeometry(w * 0.85, 0.8, 0.1), winMat);
-          winBandF.position.set(x, f * 3, z + d / 2 + 0.05);
-          buildingGroup.add(winBandF);
-
-          const winBandB = new THREE.Mesh(new THREE.BoxGeometry(w * 0.85, 0.8, 0.1), winMat);
-          winBandB.position.set(x, f * 3, z - d / 2 - 0.05);
-          buildingGroup.add(winBandB);
+      // Skip window bands on mobile — not visible at this distance anyway
+      if (!IS_MOBILE) {
+        const winMat = new THREE.MeshStandardMaterial({
+          color: pal.win,
+          emissive: pal.win,
+          emissiveIntensity: 0.6,
+          roughness: 0.1
+        });
+        const floors = Math.floor(h / 3);
+        for (let f = 1; f < floors; f++) {
+          if (f % 2 === 0) {
+            const winBandF = new THREE.Mesh(new THREE.BoxGeometry(w * 0.85, 0.8, 0.1), winMat);
+            winBandF.position.set(x, f * 3, z + d / 2 + 0.05);
+            buildingGroup.add(winBandF);
+            const winBandB = new THREE.Mesh(new THREE.BoxGeometry(w * 0.85, 0.8, 0.1), winMat);
+            winBandB.position.set(x, f * 3, z - d / 2 - 0.05);
+            buildingGroup.add(winBandB);
+          }
         }
+        // Rooftop AC units & beacons
+        const acUnit = new THREE.Mesh(
+          new THREE.BoxGeometry(w * 0.4, 1.2, d * 0.4),
+          new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5 })
+        );
+        acUnit.position.set(x, h + 0.6, z);
+        buildingGroup.add(acUnit);
+        const antenna = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.1, 0.1, 3.5, 6),
+          new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 })
+        );
+        antenna.position.set(x + w * 0.2, h + 1.75, z + d * 0.2);
+        buildingGroup.add(antenna);
+        const beacon = new THREE.Mesh(
+          new THREE.SphereGeometry(0.2, 5, 5),
+          new THREE.MeshBasicMaterial({ color: 0xef4444 })
+        );
+        beacon.position.set(x + w * 0.2, h + 3.5, z + d * 0.2);
+        buildingGroup.add(beacon);
       }
-
-      // Rooftop Features (AC units & Red Aviation Beacon Light)
-      const acUnit = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.4, 1.2, d * 0.4),
-        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5 })
-      );
-      acUnit.position.set(x, h + 0.6, z);
-      buildingGroup.add(acUnit);
-
-      // Antenna with blinking beacon
-      const antenna = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.1, 3.5, 8),
-        new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 })
-      );
-      antenna.position.set(x + w * 0.2, h + 1.75, z + d * 0.2);
-      buildingGroup.add(antenna);
-
-      const beacon = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 8, 8),
-        new THREE.MeshBasicMaterial({ color: 0xef4444 })
-      );
-      beacon.position.set(x + w * 0.2, h + 3.5, z + d * 0.2);
-      buildingGroup.add(beacon);
     };
 
     // NORTH SKYLINE (Airport City Towers & High-Rises)
@@ -708,6 +721,9 @@ export class MallGame {
 
   buildTropicalVegetation() {
     const vegGroup = new THREE.Group();
+    // Lower polygon counts on mobile; no castShadow on distant vegetation
+    const frondCount = IS_MOBILE ? 5 : 9;
+    const trunkSegs = IS_MOBILE ? 3 : 5;
 
     // 1. Realistic Palm Tree Builder
     const createPalm = (px, pz, scale = 1.0) => {
@@ -715,25 +731,24 @@ export class MallGame {
       palm.position.set(px, 0, pz);
       palm.scale.set(scale, scale, scale);
 
-      // Curved segmented trunk
       const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
-      for (let s = 0; s < 5; s++) {
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.28 - s * 0.02, 0.32 - s * 0.02, 1.4, 8), trunkMat);
+      for (let s = 0; s < trunkSegs; s++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.28 - s * 0.02, 0.32 - s * 0.02, 1.4, 6), trunkMat);
         seg.position.set(Math.sin(s * 0.3) * 0.25, 0.7 + s * 1.3, Math.cos(s * 0.3) * 0.15);
         seg.rotation.z = -0.08 * s;
-        seg.castShadow = true;
+        // Distant trees: no shadow casting
+        seg.castShadow = false;
         palm.add(seg);
       }
 
-      // Tropical Palm Canopy (9 fronds)
       const frondMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.6 });
-      for (let i = 0; i < 9; i++) {
-        const angle = (i / 9) * Math.PI * 2;
-        const frond = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3.2, 5), frondMat);
+      for (let i = 0; i < frondCount; i++) {
+        const angle = (i / frondCount) * Math.PI * 2;
+        const frond = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3.2, 4), frondMat);
         frond.position.set(Math.cos(angle) * 1.5 + 0.4, 7.0, Math.sin(angle) * 1.5);
         frond.rotation.x = Math.sin(angle) * 0.65;
         frond.rotation.z = -Math.cos(angle) * 0.65;
-        frond.castShadow = true;
+        frond.castShadow = false;
         palm.add(frond);
       }
 
@@ -747,56 +762,59 @@ export class MallGame {
       tree.scale.set(scale, scale, scale);
 
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.35, 0.45, 3.0, 8),
+        new THREE.CylinderGeometry(0.35, 0.45, 3.0, 6),
         new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 })
       );
       trunk.position.y = 1.5;
-      trunk.castShadow = true;
+      trunk.castShadow = false;
       tree.add(trunk);
 
-      // Foliage spheres
       const folMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.7 });
-      const f1 = new THREE.Mesh(new THREE.SphereGeometry(1.8, 8, 8), folMat);
+      const f1 = new THREE.Mesh(new THREE.SphereGeometry(1.8, 6, 6), folMat);
       f1.position.y = 3.6;
-      f1.castShadow = true;
+      f1.castShadow = false;
       tree.add(f1);
 
-      const f2 = new THREE.Mesh(new THREE.SphereGeometry(1.4, 8, 8), folMat);
-      f2.position.set(0.6, 4.4, 0.4);
-      tree.add(f2);
+      if (!IS_MOBILE) {
+        const f2 = new THREE.Mesh(new THREE.SphereGeometry(1.4, 6, 6), folMat);
+        f2.position.set(0.6, 4.4, 0.4);
+        tree.add(f2);
+      }
 
       vegGroup.add(tree);
     };
 
-    // Line of Palms along North Highway
-    for (let x = -50; x <= 50; x += 14) {
+    // On mobile: fewer palms, larger spacing to cut draw calls by ~60%
+    const palmSpacing = IS_MOBILE ? 20 : 14;
+    for (let x = -50; x <= 50; x += palmSpacing) {
       createPalm(x, -31, 0.95);
-      createPalm(x + 5, -45, 1.1);
+      if (!IS_MOBILE) createPalm(x + 5, -45, 1.1);
     }
 
-    // Line of Palms along South Boulevard & Entrance Allée
-    for (let z = 28; z <= 68; z += 10) {
+    const southSpacing = IS_MOBILE ? 16 : 10;
+    for (let z = 28; z <= 68; z += southSpacing) {
       createPalm(-9, z, 1.0);
       createPalm(9, z, 1.0);
-      createPalm(-26, z, 0.9);
-      createPalm(26, z, 0.9);
+      if (!IS_MOBILE) {
+        createPalm(-26, z, 0.9);
+        createPalm(26, z, 0.9);
+      }
     }
 
-    // Palms along West & East Avenues
-    for (let z = -25; z <= 25; z += 12) {
-      createPalm(-35, z, 1.05);
-      createPalm(-50, z, 0.9);
-      createPalm(35, z, 1.05);
-      createPalm(50, z, 0.9);
+    if (!IS_MOBILE) {
+      for (let z = -25; z <= 25; z += 12) {
+        createPalm(-35, z, 1.05);
+        createPalm(-50, z, 0.9);
+        createPalm(35, z, 1.05);
+        createPalm(50, z, 0.9);
+      }
+      createBroadleaf(-48, -15, 1.2);
+      createBroadleaf(-52, 10, 1.1);
+      createBroadleaf(48, -15, 1.2);
+      createBroadleaf(52, 10, 1.1);
+      createBroadleaf(-20, -60, 1.3);
+      createBroadleaf(20, -60, 1.3);
     }
-
-    // Broadleaf trees clustered in green lawn parks
-    createBroadleaf(-48, -15, 1.2);
-    createBroadleaf(-52, 10, 1.1);
-    createBroadleaf(48, -15, 1.2);
-    createBroadleaf(52, 10, 1.1);
-    createBroadleaf(-20, -60, 1.3);
-    createBroadleaf(20, -60, 1.3);
 
     this.scene.add(vegGroup);
   }
@@ -804,16 +822,15 @@ export class MallGame {
   buildStreetLamps() {
     const lampGroup = new THREE.Group();
 
-    const createLamp = (lx, lz) => {
+    const createLamp = (lx, lz, addLight = true) => {
       const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.14, 6.0, 8),
+        new THREE.CylinderGeometry(0.12, 0.14, 6.0, 6),
         new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 })
       );
       pole.position.set(lx, 3, lz);
-      pole.castShadow = true;
+      pole.castShadow = false; // Distant lamps don't need shadow
       lampGroup.add(pole);
 
-      // Lantern head
       const lantern = new THREE.Mesh(
         new THREE.BoxGeometry(0.8, 0.3, 0.8),
         new THREE.MeshStandardMaterial({
@@ -825,13 +842,15 @@ export class MallGame {
       lantern.position.set(lx, 6.1, lz);
       lampGroup.add(lantern);
 
-      // Downward warm street light
-      const light = new THREE.PointLight(0xffedd5, 1.1, 14);
-      light.position.set(lx, 5.8, lz);
-      lampGroup.add(light);
+      // On mobile: skip individual PointLights per lamp (too expensive)
+      // A single ambient/hemisphere covers the same visual role
+      if (addLight && !IS_MOBILE) {
+        const light = new THREE.PointLight(0xffedd5, 1.1, 14);
+        light.position.set(lx, 5.8, lz);
+        lampGroup.add(light);
+      }
     };
 
-    // Street lamps along North & South roads
     [-30, 0, 30].forEach(lx => {
       createLamp(lx, -33);
       createLamp(lx, 31);
@@ -1812,6 +1831,13 @@ export class MallGame {
     requestAnimationFrame(this.animate);
     const delta = this.clock.getDelta();
     const elapsedTime = this.clock.getElapsedTime();
+
+    // Frame throttle on mobile: cap at ~30fps when player is idle
+    // This halves GPU work while standing still browsing the mall
+    if (IS_MOBILE) {
+      this._frameSkip = (this._frameSkip || 0) + 1;
+      if (!this.isMoving && this._frameSkip % 2 !== 0) return;
+    }
 
     this.updatePlayerMovement(delta, elapsedTime);
     this.updateCamera();

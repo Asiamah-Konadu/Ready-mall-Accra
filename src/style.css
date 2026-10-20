@@ -2232,6 +2232,42 @@ body, html {
     padding: 12px;
     border-radius: 14px;
   }
+
+  /* ============================================================
+     MINIMAP: Move up to avoid overlapping the action button
+     ============================================================ */
+  .minimap-container {
+    bottom: 160px !important;  /* above the 110px joystick + 50px gap */
+    right: 14px;
+  }
+
+  .minimap-container.collapsed {
+    bottom: 160px !important;
+    right: 14px !important;
+  }
+
+  /* Radio widget repositioned on mobile open state */
+  .radio-widget.mobile-open {
+    bottom: auto;
+    top: 90px;
+  }
+
+  /* Ensure all tap targets meet 44px minimum */
+  .nav-pill,
+  .icon-btn,
+  .merchant-toggle-btn,
+  .cart-pill-btn {
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+
+  .mobile-action-btn {
+    touch-action: manipulation;
+  }
+
+  .joystick-zone {
+    touch-action: none;
+  }
 }
 
 /* Extra Small Phones (<= 380px) */
@@ -2262,3 +2298,27 @@ body, html {
   }
 }
 
+
+/* ============================================================
+   LANDSCAPE MOBILE: Maximize game view on short screens
+   ============================================================ */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .pa-ticker-bar { display: none !important; }
+
+  .top-hud { padding: 5px 10px; gap: 5px; }
+  .brand-title { font-size: 0.9rem; }
+  .brand-city  { display: none; }
+  .room-nav    { display: none !important; }
+
+  .joystick-zone  { width: 88px !important; height: 88px !important; }
+  .joystick-knob  { width: 40px !important; height: 40px !important; }
+  .mobile-action-btn { width: 60px !important; height: 60px !important; }
+  .mobile-action-icon { font-size: 1.25rem; }
+
+  .minimap-container { width: 80px !important; height: 80px !important; bottom: 100px !important; right: 10px !important; }
+  #minimap-canvas { width: 80px !important; height: 80px !important; }
+
+  .bottom-controls { padding: 0 12px max(8px, env(safe-area-inset-bottom)) !important; }
+  .modal-card { max-height: 92vh !important; }
+  .stall-products-grid { max-height: 55vh !important; grid-template-columns: repeat(2, 1fr) !important; }
+}
